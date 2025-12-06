@@ -1,0 +1,12 @@
+# Executables
+*.exe
+*.out
+
+# Build files
+build/
+
+# Cache files
+**/.cache/*
+
+# Components
+**/managed_components/*
