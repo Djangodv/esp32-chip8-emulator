@@ -1,28 +1,14 @@
 dependencies:
-  espressif/cmake_utilities:
-    component_hash: 351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.1'
-    source:
-      registry_url: https://components.espressif.com
-      type: service
-    version: 0.5.3
   espressif/esp_lcd_ili9341:
-    component_hash: 31f1b793aa2110dd2ae071c21ccbff0a4eb20d9a4ee40b6294c0dc0ad9552c4e
+    component_hash: e301db2697027ddab3dd77486b14bbc4868dc1b10770aed1cb2f5cc99f777c83
     dependencies:
     - name: idf
       require: private
       version: '>=4.4'
-    - name: espressif/cmake_utilities
-      registry_url: https://components.espressif.com
-      require: private
-      version: 0.*
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 1.2.0
+    version: 1.0.0
   idf:
     source:
       type: idf
@@ -41,6 +27,6 @@ direct_dependencies:
 - espressif/esp_lcd_ili9341
 - idf
 - joltwallet/littlefs
-manifest_hash: 86510415023f8aeaee6d0a63172de65c413488c86a4dbee57f84b6e3e3588f8c
+manifest_hash: ee89f6366af48ba392a3e14a8e8f1c1122a5c4ad8cfe2128b9f0a6e4eb60e375
 target: esp32
 version: 2.0.0

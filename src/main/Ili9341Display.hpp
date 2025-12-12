@@ -32,7 +32,6 @@ public:
     void backlightOn();
     void backlightOff();
     void diagnostics();
-    void diagnostics_drawables();
     uint16_t rbg565(uint8_t r, uint8_t b, uint8_t g);
 
     // Drawing Primitives

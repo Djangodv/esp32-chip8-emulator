@@ -15,6 +15,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include <bit>
+
 static const char *TAG = "MAIN";
 
 uint8_t memory[4096];
@@ -24,6 +26,11 @@ uint16_t stack[16];
 uint8_t sound, delay;
 uint8_t v[16];
 uint8_t sp; // Stack pointer?
+
+uint16_t opcode;
+
+Ili9341Display display(13, 14, 15, 2, -1,
+                       27); // MOSI, SCLK, CS, DC, RST, BCKL (BL on GPIO 27)
 
 void init() {
 
@@ -50,18 +57,59 @@ uint16_t fetch() {
 
 void execute() {
 
+  opcode = fetch();
+
+  ESP_LOGI(TAG, "Current instruction in memory: %X", opcode);
+
+  switch (opcode & 0xF000) { // & 0xF000
+  case 0x0000:
+    switch (opcode & 0xFFFF) {
+    // Clear screen (00E0)
+    case 0x00E0:
+      // display.fillScreen(0x0000);
+      ESP_LOGE(TAG, "00E0");
+      break;
+    case 0x00EE:
+      ESP_LOGE(TAG, "00EE");
+      break;
+    // Test for testing
+    case 0x0C60:
+      ESP_LOGE(TAG, "0C60");
+      // display.fillScreen(display.rbg565(100, 100, 100));
+      // display.drawPixel(int x, int y, uint16_t color)
+      break;
+    }
+    break;
+  // Set PC to location NNN (1NNN)
+  case 0x1000:
+    ESP_LOGE(TAG, "1NNN");
+    break;
+  // Set register (6XNN)
+  case 0x6000:
+    ESP_LOGE(TAG, "6XNN");
+    break;
+  case 0x7000:
+    ESP_LOGE(TAG, "7XNN");
+    break;
+  case 0xA000:
+    ESP_LOGE(TAG, "ANNN");
+    break;
+  case 0xD000:
+    ESP_LOGE(TAG, "DXYN");
+    break;
+  default:
+    ESP_LOGE(TAG, "No opcode implementation yet");
+  }
 };
 
 void init_littlefs() {
 
   ESP_LOGI(TAG, "Initializing LittleFS");
 
-  esp_vfs_littlefs_conf_t conf = {
-      .base_path = "/littlefs",
-      .partition_label = "storage",
-      .format_if_mount_failed = true,
-      .dont_mount = false,
-  };
+  esp_vfs_littlefs_conf_t conf = {.base_path = "/littlefs",
+                                  .partition_label = "storage",
+                                  .format_if_mount_failed = true,
+                                  .dont_mount = false};
 
   // Use settings defined above to initialize and mount LittleFS filesystem.
   // Note: esp_vfs_littlefs_register is an all-in-one convenience function.
@@ -134,22 +182,21 @@ void load_rom() {
 
 extern "C" void app_main(void) {
 
+  ESP_LOGI(TAG, "Started running 'main' task");
+
   init();
   init_littlefs();
   load_rom();
 
-  ESP_LOGI(TAG, "Started running 'main' task");
-
-  Ili9341Display display(13, 14, 15, 2, -1,
-                         27); // MOSI, SCLK, CS, DC, RST, BCKL (BL on GPIO 27)
   display.init();
-  ESP_LOGI(TAG, "Succesfully initialized display");
-  // display.diagnostics();
+  ESP_LOGI(TAG, "Initialized display");
+  display.backlightOn();                       // make sure the backlight is on
+  display.fillScreen(display.rbg565(100 12, 223)); // clear the screen
 
-  display.fillScreen(display.rbg565(0, 0, 0)); // clear the screen
-
-  while (true) {
-    // ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
-    vTaskDelay(pdMS_TO_TICKS(100));
-  }
+  // while (true) {
+  //   ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
+  //   execute();
+  // Small pause to prevent watchdog trigger
+  //   vTaskDelay(pdMS_TO_TICKS(1000));
+  // }
 }

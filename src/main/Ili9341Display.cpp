@@ -178,39 +178,6 @@ void Ili9341Display::diagnostics() {
 
 }
 
-// void Ili9341Display::diagnostics_drawables() {
-//     // please help me with these colors
-//     uint16_t red     = rbg565(255, 0,   0);   // R=255, B=0,   G=0
-//     uint16_t green   = rbg565(0,   0,   255); // R=0,   B=0,   G=255
-//     uint16_t blue    = rbg565(0,   255, 0);   // R=0,   B=255, G=0
-//     uint16_t yellow  = rbg565(255, 0,   255); // R=255, B=0,   G=255
-//     uint16_t orange  = rbg565(255, 0,   160); // R=255, B=0,   G=160
-//     // uint16_t white   = rbg565(255, 255, 255); // R=255, B=255, G=255
-//
-//     fillScreen(rbg565(0, 0, 0)); // black
-//
-//     std::vector<Drawable*> shapes = {
-//         new Line(10, 10, 120, 10, red),
-//
-//         new Rectangle(10, 20, 60, 40, blue),
-//         new Rectangle(80, 20, 40, 40, yellow, true),
-//
-//         new Square(10, 70, 30, red),
-//         new Square(50, 70, 30, green, true),
-//
-//         new Circle(40, 130, 20, blue),
-//         new Circle(100, 130, 20, orange, true),
-//
-//         new Triangle(10, 190, 50, 190, 30, 160, green),
-//         new Triangle(80, 190, 120, 190, 100, 160, red, true)
-//     };
-//
-//     for (const auto& shape : shapes) {
-//         shape->draw(*this);
-//         delete shape;
-//     }
-// }
-
 /*! \brief start of Drawing Primitives
  *
  *  drawPixel() Accesses panel IO directly 
