@@ -101,6 +101,7 @@ void execute() {
     // Clear screen (00E0)
     case 0x00E0:
       display.fillScreen(black);
+			display.present();
       ESP_LOGE(TAG, "00E0");
       break;
     case 0x00EE:
@@ -151,6 +152,13 @@ void execute() {
     break;
   case 0xD000:
     ESP_LOGE(TAG, "DXYN");
+
+		uint8_t n_bytes;
+		n_bytes = opcode & 0x000F;
+
+		ESP_LOGE(TAG, "N: %X", n_bytes);
+
+
     break;
   default:
     ESP_LOGE(TAG, "No opcode implementation yet");
@@ -249,6 +257,7 @@ extern "C" void app_main(void) {
   display.init();
   ESP_LOGI(TAG, "Initialized display");
   display.fillScreen(white); // Test
+	display.present();
 
   while (true) {
     // Below line causes issues due to calling fetch twice, thereby incrementing

@@ -15,12 +15,27 @@ Ili9341Display::Ili9341Display(int mosi, int sclk, int cs, int dc, int rst, int 
     : _mosi(mosi), _sclk(sclk), _cs(cs), _dc(dc), _rst(rst), _bl(bl) {}
 
 Ili9341Display::~Ili9341Display() {
-    // Optional cleanup if needed
+	if (backbuffer_) {
+		 heap_caps_free(backbuffer_);
+		 backbuffer_ = nullptr;
+		 backbuffer_len_ = 0;
+	}
+	backlightOff();
 }
 
 void Ili9341Display::init() {
     setupSPI();
     setupPanel();
+    // Allocate full-screen backbuffer that we can use
+    backbuffer_len_ = WIDTH * HEIGHT;
+    backbuffer_ = static_cast<uint16_t*>(
+        heap_caps_malloc(backbuffer_len_ * sizeof(uint16_t), MALLOC_CAP_DMA)
+    );
+    if (!backbuffer_) {
+        ESP_LOGE(TAG, "Failed to allocate %d-byte backbuffer", (int)(backbuffer_len_ * sizeof(uint16_t)));
+    } else {
+        ESP_LOGI(TAG, "Backbuffer OK: %d bytes", (int)(backbuffer_len_ * sizeof(uint16_t)));
+    }
     backlightOn();
 }
 
@@ -77,32 +92,33 @@ void Ili9341Display::setupPanel() {
     ESP_LOGI(TAG, "ESP lcd panel setup is done.");
 }
 
-void Ili9341Display::fillScreen(uint16_t color) {
-    static uint16_t* buffer = nullptr;
-
-    if (buffer == nullptr) {
-        buffer = (uint16_t*)heap_caps_malloc(WIDTH * HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA);
-        if (!buffer) {
-            ESP_LOGE(TAG, "Failed to allocate pixel buffer");
-            return;
-        }
-        ESP_LOGI(TAG, "Created pixel buffer");
-    }
-
-    for (int i = 0; i < WIDTH * HEIGHT; ++i) {
-        buffer[i] = color;
-    }
-
+// A general function for pushing the frame to the LCD panel
+void Ili9341Display::present() {
+    // Push the backbuffer to the panel
     if (_panel) {
-        esp_err_t err = esp_lcd_panel_draw_bitmap(_panel, 0, 0, WIDTH, HEIGHT, buffer);
+        esp_err_t err = esp_lcd_panel_draw_bitmap(_panel, 0, 0, WIDTH, HEIGHT, backbuffer_);
+        vTaskDelay(pdMS_TO_TICKS(41)); // slight delay before new draw transfer is done. ToDo: implement a callback
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to draw bitmap: %s", esp_err_to_name(err));
-        } else {
-            ESP_LOGI(TAG, "fillScreen draw complete.");
-        }
+        } /* else {
+            ESP_LOGI(TAG, "Draw complete."); // temp disable log for beter performance
+        } */
     } else {
-        ESP_LOGE(TAG, "Panel is NULL in fillScreen");
+        ESP_LOGE(TAG, "Panel is NULL");
     }
+}
+
+// The fillScreen can now use the present function. This function is reduced to filling a screen with a color. Use present function to fill the screen.
+void Ili9341Display::fillScreen(uint16_t color) {
+    if (backbuffer_ == nullptr) {
+        ESP_LOGE(TAG, "Backbuffer not allocated");
+        return;
+    } else {
+        // Fill the backbuffer
+        for (int i = 0; i < (int)backbuffer_len_; ++i) {
+            backbuffer_[i] = color;
+        }
+    }      
 }
 
 void Ili9341Display::backlightOn() {
@@ -187,8 +203,17 @@ void Ili9341Display::diagnostics() {
  *  drawCircle() Uses Brensham's Circle Algorithm
  *  drawTriangle() Draws 3 lines or fills using scanlines 
  */
+
 void Ili9341Display::drawPixel(int x, int y, uint16_t color) {
-    _panel->draw_bitmap(_panel, x, y, x + 1, y + 1, &color);
+    if ((unsigned)x >= (unsigned)WIDTH || (unsigned)y >= (unsigned)HEIGHT) {
+        // ESP_LOGE(TAG, "DrawPixel out of bounds");          
+        return; // discard when out of bounds  
+    }
+    if (backbuffer_) {
+        backbuffer_[y * WIDTH + x] = color;  // draw into backbuffer
+    } else {
+        ESP_LOGE(TAG, "No backbuffer. Can not perform draw."); // no fallback implemented but you could directly draw to panel like in previous examples.    
+    }
 }
 
 void Ili9341Display::drawLine(int x0, int y0, int x1, int y1, uint16_t color) {

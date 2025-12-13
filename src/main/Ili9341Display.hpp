@@ -10,6 +10,7 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 #include "esp_heap_caps.h" // for heap_caps_malloc
+// #include "esp_timer.h" // for esp_timer_get_time for fine grain timing
 
 // #include "Line.hpp"
 // #include "Rectangle.hpp"
@@ -41,6 +42,8 @@ public:
     void drawTriangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color, bool fill = false);
     void drawCircle(int x, int y, int radius, uint16_t color, bool fill = false);
 
+		void present();
+
 private:
     static constexpr const char* TAG = "Drawables";
 
@@ -51,4 +54,8 @@ private:
     spi_host_device_t _host = SPI2_HOST;
     esp_lcd_panel_io_handle_t _io = nullptr;
     esp_lcd_panel_handle_t _panel = nullptr;
+
+    // For the backbuffer
+    uint16_t* backbuffer_ = nullptr;     // WIDTH * HEIGHT entries
+    size_t    backbuffer_len_ = 0;       // number of uint16_t entries
 };
