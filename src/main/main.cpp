@@ -21,13 +21,33 @@ static const char *TAG = "MAIN";
 
 uint8_t memory[4096];
 uint16_t pc;
-uint16_t index_;
+uint16_t I;
 uint16_t stack[16];
 uint8_t sound, delay;
 uint8_t v[16];
 uint8_t sp; // Stack pointer?
 
 uint16_t opcode;
+
+uint8_t fontset[80] =
+    {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
 // Colors
 uint16_t black;
@@ -39,6 +59,13 @@ Ili9341Display display(13, 14, 15, 2, -1,
 void init() {
 
   pc = 0x200;
+
+	// Load sprite data into memory
+	for (int i = 0; i < sizeof(fontset); i++) {
+		ESP_LOGE(TAG, "%X", fontset[i]);
+		memory[0x50 + i] = fontset[i];
+		ESP_LOGI(TAG, "%X: %X", 0x50 + i, memory[0x50 + i]);
+	}
 
   // TODO: Initialize all memory type values to zero
 };
@@ -54,8 +81,8 @@ uint16_t fetch() {
   // the bitwise OR operator (|) setting the second part of the full opcode
   instruction = memory[pc] << 8 | memory[pc + 1]; // 0x200
 
-	// TEST:
-	// ESP_LOGI(TAG, "Instruction: %X", instruction);
+  // TEST:
+  // ESP_LOGI(TAG, "Instruction: %X", instruction);
 
   pc += 2;
 
@@ -87,25 +114,40 @@ void execute() {
     break;
   // Set PC to location NNN (1NNN)
   case 0x1000:
-    ESP_LOGE(TAG, "Memory address: %X", opcode & 0x0FFF);
+    ESP_LOGI(TAG, "Memory address: %X", opcode & 0x0FFF);
     ESP_LOGE(TAG, "1NNN");
     pc = opcode & 0x0FFF;
-    ESP_LOGE(TAG, "Current PC: %X", pc);
+    ESP_LOGI(TAG, "Current PC: %X", pc);
     break;
   // Set register (6XNN)
   case 0x6000:
 
-    uint16_t test;
-    test = opcode & 0x0F00;
-    ESP_LOGI(TAG, "Vx: %X", test);
+    uint8_t reg;
+    reg = (opcode & 0x0F00) >> 8;
+    ESP_LOGI(TAG, "Vx: %X", reg);
+
+    v[reg] = opcode & 0x00FF;
+
+    ESP_LOGI(TAG, "Register %X: %X", reg, v[reg]);
 
     ESP_LOGE(TAG, "6XNN");
     break;
   case 0x7000:
+
+    ESP_LOGI(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
+    v[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
+
+    ESP_LOGI(TAG, "Vx: %d", (opcode & 0x0F00) >> 8);
+    ESP_LOGI(TAG, "NN: %d", opcode & 0x00FF);
+    ESP_LOGI(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
+
     ESP_LOGE(TAG, "7XNN");
     break;
   case 0xA000:
     ESP_LOGE(TAG, "ANNN");
+		I = opcode & 0x0FFF;
+    ESP_LOGI(TAG, "NNN: %X", opcode & 0x0FFF);
+    ESP_LOGI(TAG, "Register I: %X", I);
     break;
   case 0xD000:
     ESP_LOGE(TAG, "DXYN");
@@ -209,8 +251,8 @@ extern "C" void app_main(void) {
   display.fillScreen(white); // Test
 
   while (true) {
-    // Below line causes issues due to calling fetch twice, thereby incrementing PC twice
-    // ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
+    // Below line causes issues due to calling fetch twice, thereby incrementing
+    // PC twice ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
     execute();
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
