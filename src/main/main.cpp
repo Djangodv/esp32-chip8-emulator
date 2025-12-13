@@ -29,6 +29,10 @@ uint8_t sp; // Stack pointer?
 
 uint16_t opcode;
 
+// Colors
+uint16_t black;
+uint16_t white;
+
 Ili9341Display display(13, 14, 15, 2, -1,
                        27); // MOSI, SCLK, CS, DC, RST, BCKL (BL on GPIO 27)
 
@@ -47,8 +51,11 @@ uint16_t fetch() {
   // Recall that Chip-8 uses big-endian to store opcodes First take the second
   // byte starting from the PC and shift it 8 bits to left, resulting in
   // 1111111100000000 after which you compare the current address of the PC with
-  // the bitwise OR operator (|) setting the second part of a full opcode
-  instruction = memory[pc + 1] << 8 | memory[pc]; // 0x200
+  // the bitwise OR operator (|) setting the second part of the full opcode
+  instruction = memory[pc] << 8 | memory[pc + 1]; // 0x200
+
+	// TEST:
+	// ESP_LOGI(TAG, "Instruction: %X", instruction);
 
   pc += 2;
 
@@ -59,33 +66,39 @@ void execute() {
 
   opcode = fetch();
 
-  ESP_LOGI(TAG, "Current instruction in memory: %X", opcode);
+  ESP_LOGE(TAG, "Current instruction in memory: %X", opcode);
 
   switch (opcode & 0xF000) { // & 0xF000
   case 0x0000:
     switch (opcode & 0xFFFF) {
     // Clear screen (00E0)
     case 0x00E0:
-      // display.fillScreen(0x0000);
+      display.fillScreen(black);
       ESP_LOGE(TAG, "00E0");
       break;
     case 0x00EE:
       ESP_LOGE(TAG, "00EE");
       break;
-    // Test for testing
-    case 0x0C60:
-      ESP_LOGE(TAG, "0C60");
-      // display.fillScreen(display.rbg565(100, 100, 100));
-      // display.drawPixel(int x, int y, uint16_t color)
-      break;
+      // Test for testing
+      // case 0x0C60:
+      //   ESP_LOGE(TAG, "0C60");
+      //   break;
     }
     break;
   // Set PC to location NNN (1NNN)
   case 0x1000:
+    ESP_LOGE(TAG, "Memory address: %X", opcode & 0x0FFF);
     ESP_LOGE(TAG, "1NNN");
+    pc = opcode & 0x0FFF;
+    ESP_LOGE(TAG, "Current PC: %X", pc);
     break;
   // Set register (6XNN)
   case 0x6000:
+
+    uint16_t test;
+    test = opcode & 0x0F00;
+    ESP_LOGI(TAG, "Vx: %X", test);
+
     ESP_LOGE(TAG, "6XNN");
     break;
   case 0x7000:
@@ -184,19 +197,21 @@ extern "C" void app_main(void) {
 
   ESP_LOGI(TAG, "Started running 'main' task");
 
+  black = 0xFFFF;
+  white = 0x0000;
+
   init();
   init_littlefs();
   load_rom();
 
   display.init();
   ESP_LOGI(TAG, "Initialized display");
-  display.backlightOn();                       // make sure the backlight is on
-  display.fillScreen(display.rbg565(100 12, 223)); // clear the screen
+  display.fillScreen(white); // Test
 
-  // while (true) {
-  //   ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
-  //   execute();
-  // Small pause to prevent watchdog trigger
-  //   vTaskDelay(pdMS_TO_TICKS(1000));
-  // }
+  while (true) {
+    // Below line causes issues due to calling fetch twice, thereby incrementing PC twice
+    // ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
+    execute();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
