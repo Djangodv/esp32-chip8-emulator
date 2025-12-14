@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 
 #include <bit>
+#include <bitset>
 
 static const char *TAG = "MAIN";
 
@@ -150,15 +151,50 @@ void execute() {
     ESP_LOGI(TAG, "NNN: %X", opcode & 0x0FFF);
     ESP_LOGI(TAG, "Register I: %X", I);
     break;
+	// Most involved instruction for drawing a sprite on the screen
   case 0xD000:
     ESP_LOGE(TAG, "DXYN");
 
-		uint8_t n_bytes;
-		n_bytes = opcode & 0x000F;
+		uint8_t height;
+		height = opcode & 0x000F;
 
-		ESP_LOGE(TAG, "N: %X", n_bytes);
+		ESP_LOGE(TAG, "N: %X", height);
 
+		uint8_t x, y;
 
+		x = v[(opcode & 0x0F00) >> 8];
+		y = v[(opcode & 0x00F0) >> 4];
+
+		ESP_LOGE(TAG, "Vx: %d", x);
+		ESP_LOGE(TAG, "Vy: %d", y);
+
+		// TEST:
+		// std::bitset<8> byte_;
+		uint8_t byte;
+
+		// First loop over the height (h)
+		for (int h = 0; h < height; h++) {
+
+			byte = memory[I + h];
+
+			ESP_LOGI(TAG, "Data in memory at %d: %X", I + h, memory[I + h]);
+			// TEST:
+			// byte_ = memory[I + h];
+			// std::cout << byte_ << std::endl;
+
+			for (int x = 0; x < 8; x++) {
+				// Check which of bits in the byte of the sprite are set
+				// Invert the operation by starting on the left-side of the byte, because of big-endiannes (else the sprites will be drawn in a mirror image)
+				// Cause: if ((byte >> i) & 0x1) {
+				if ((byte << x) & 0x80) {
+					display.drawPixel(x + x, y + h, white);
+				}
+			}
+
+		}
+
+		display.present();
+		
     break;
   default:
     ESP_LOGE(TAG, "No opcode implementation yet");

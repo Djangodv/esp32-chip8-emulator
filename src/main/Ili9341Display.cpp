@@ -207,12 +207,22 @@ void Ili9341Display::diagnostics() {
 void Ili9341Display::drawPixel(int x, int y, uint16_t color) {
     if ((unsigned)x >= (unsigned)WIDTH || (unsigned)y >= (unsigned)HEIGHT) {
         // ESP_LOGE(TAG, "DrawPixel out of bounds");          
-        return; // discard when out of bounds  
+        return; // Discard when out of bounds  
     }
     if (backbuffer_) {
-        backbuffer_[y * WIDTH + x] = color;  // draw into backbuffer
+
+				// Center and scale pixels
+				uint8_t transformed_x = 32 + (x * 4);
+				uint8_t transformed_y = 56 + (y * 4);
+
+				// Draw a 4x4 rectangle into the backbuffer
+				backbuffer_[transformed_y * WIDTH + transformed_x] = color;
+				backbuffer_[transformed_y * WIDTH + transformed_x + 1] = color;
+				backbuffer_[transformed_y * WIDTH + transformed_x + WIDTH] = color;
+				backbuffer_[transformed_y * WIDTH + transformed_x + WIDTH + 1] = color;
+
     } else {
-        ESP_LOGE(TAG, "No backbuffer. Can not perform draw."); // no fallback implemented but you could directly draw to panel like in previous examples.    
+        ESP_LOGE(TAG, "No backbuffer. Can not perform draw.");
     }
 }
 
