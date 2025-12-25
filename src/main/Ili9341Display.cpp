@@ -204,6 +204,7 @@ void Ili9341Display::diagnostics() {
  *  drawTriangle() Draws 3 lines or fills using scanlines 
  */
 
+// TODO: Implement XOR operation for detecting collision
 void Ili9341Display::drawPixel(int x, int y, uint16_t color) {
     if ((unsigned)x >= (unsigned)WIDTH || (unsigned)y >= (unsigned)HEIGHT) {
         // ESP_LOGE(TAG, "DrawPixel out of bounds");          

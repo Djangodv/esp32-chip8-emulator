@@ -18,13 +18,15 @@
 #include <bit>
 #include <bitset>
 
+#include <KeypadControl.hpp>
+
 static const char *TAG = "MAIN";
 
 uint8_t memory[4096];
 uint16_t pc;
 uint16_t I;
 uint16_t stack[16];
-uint8_t sound, delay;
+uint8_t sound, delay_;
 uint8_t v[16];
 uint8_t sp; // Stack pointer?
 
@@ -182,12 +184,13 @@ void execute() {
 			// byte_ = memory[I + h];
 			// std::cout << byte_ << std::endl;
 
-			for (int x = 0; x < 8; x++) {
+			// Width of the sprite to be drawn
+			for (int w = 0; w < 8; w++) {
 				// Check which of bits in the byte of the sprite are set
 				// Invert the operation by starting on the left-side of the byte, because of big-endiannes (else the sprites will be drawn in a mirror image)
 				// Cause: if ((byte >> i) & 0x1) {
-				if ((byte << x) & 0x80) {
-					display.drawPixel(x + x, y + h, white);
+				if ((byte << w) & 0x80) {
+					display.drawPixel(x + w, y + h, white);
 				}
 			}
 
