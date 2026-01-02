@@ -15,10 +15,13 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "driver/gpio.h"
+
 #include <bit>
 #include <bitset>
 
-#include <KeypadControl.hpp>
+// #include <KeypadControl.hpp>
+// #include <SoundControl.hpp>>
 
 static const char *TAG = "MAIN";
 
@@ -32,24 +35,23 @@ uint8_t sp; // Stack pointer?
 
 uint16_t opcode;
 
-uint8_t fontset[80] =
-    {
-        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-        0x20, 0x60, 0x20, 0x20, 0x70, // 1
-        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+uint8_t fontset[80] = {
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
 // Colors
@@ -63,12 +65,14 @@ void init() {
 
   pc = 0x200;
 
-	// Load sprite data into memory
-	for (int i = 0; i < sizeof(fontset); i++) {
-		ESP_LOGE(TAG, "%X", fontset[i]);
-		memory[0x50 + i] = fontset[i];
-		ESP_LOGI(TAG, "%X: %X", 0x50 + i, memory[0x50 + i]);
-	}
+  // Load sprite data into memory
+  for (int i = 0; i < sizeof(fontset); i++) {
+    ESP_LOGE(TAG, "%X", fontset[i]);
+    memory[0x50 + i] = fontset[i];
+    ESP_LOGI(TAG, "%X: %X", 0x50 + i, memory[0x50 + i]);
+  }
+
+	sp = 0; // Initialize stack pointer to 0 (top of the stack)
 
   // TODO: Initialize all memory type values to zero
 };
@@ -101,13 +105,20 @@ void execute() {
   switch (opcode & 0xF000) { // & 0xF000
   case 0x0000:
     switch (opcode & 0xFFFF) {
-    // Clear screen (00E0)
+		// 00E0 (Clear screen)
     case 0x00E0:
       display.fillScreen(black);
-			display.present();
+      display.present();
       ESP_LOGE(TAG, "00E0");
       break;
     case 0x00EE:
+
+			// uint16_t stack_value = stack[sp];
+
+			// Sets PC to current value pointed to by stack pointer after 2NNN subroutine has finished
+			pc = stack[sp];
+			sp--;
+			
       ESP_LOGE(TAG, "00EE");
       break;
       // Test for testing
@@ -123,6 +134,43 @@ void execute() {
     pc = opcode & 0x0FFF;
     ESP_LOGI(TAG, "Current PC: %X", pc);
     break;
+	// 2NNN (call subroutine at NNN)
+	case 0x2000:
+
+		stack[sp] = pc;
+		sp++;
+		pc = opcode & 0x0FFF;
+
+    ESP_LOGE(TAG, "2NNN");
+		break;
+
+
+	// 3XNN
+	case 0x3000:
+
+		// if (Vx == NN)
+		if (v[(opcode & 0x0F00) >> 8] == (opcode & 0x0FF)) {
+			pc += 2;
+		}
+
+    ESP_LOGE(TAG, "3NNN: %d", (opcode & 0x0F00) >> 8);
+    ESP_LOGE(TAG, "3NNN: %X", (opcode & 0x0F00) >> 8);
+    ESP_LOGE(TAG, "3NNN");
+
+		break;
+
+	
+	// 4XNN
+	// Yet to be tested
+	case 0x4000:
+
+		if (v[(opcode & 0x0F00) >> 8] != (opcode & 0x0FF)) {
+			pc += 2;
+		}
+
+    ESP_LOGE(TAG, "4NNN");
+		break;
+
   // Set register (6XNN)
   case 0x6000:
 
@@ -149,55 +197,55 @@ void execute() {
     break;
   case 0xA000:
     ESP_LOGE(TAG, "ANNN");
-		I = opcode & 0x0FFF;
+    I = opcode & 0x0FFF;
     ESP_LOGI(TAG, "NNN: %X", opcode & 0x0FFF);
     ESP_LOGI(TAG, "Register I: %X", I);
     break;
-	// Most involved instruction for drawing a sprite on the screen
+    // Most involved instruction for drawing a sprite on the screen
   case 0xD000:
     ESP_LOGE(TAG, "DXYN");
 
-		uint8_t height;
-		height = opcode & 0x000F;
+    uint8_t height;
+    height = opcode & 0x000F;
 
-		ESP_LOGE(TAG, "N: %X", height);
+    ESP_LOGE(TAG, "N: %X", height);
 
-		uint8_t x, y;
+    uint8_t x, y;
 
-		x = v[(opcode & 0x0F00) >> 8];
-		y = v[(opcode & 0x00F0) >> 4];
+    x = v[(opcode & 0x0F00) >> 8];
+    y = v[(opcode & 0x00F0) >> 4];
 
-		ESP_LOGE(TAG, "Vx: %d", x);
-		ESP_LOGE(TAG, "Vy: %d", y);
+    ESP_LOGE(TAG, "Vx: %d", x);
+    ESP_LOGE(TAG, "Vy: %d", y);
 
-		// TEST:
-		// std::bitset<8> byte_;
-		uint8_t byte;
+    // TEST:
+    // std::bitset<8> byte_;
+    uint8_t byte;
 
-		// First loop over the height (h)
-		for (int h = 0; h < height; h++) {
+    // First loop over the height (h)
+    for (int h = 0; h < height; h++) {
 
-			byte = memory[I + h];
+      byte = memory[I + h];
 
-			ESP_LOGI(TAG, "Data in memory at %d: %X", I + h, memory[I + h]);
-			// TEST:
-			// byte_ = memory[I + h];
-			// std::cout << byte_ << std::endl;
+      ESP_LOGI(TAG, "Data in memory at %d: %X", I + h, memory[I + h]);
+      // TEST:
+      // byte_ = memory[I + h];
+      // std::cout << byte_ << std::endl;
 
-			// Width of the sprite to be drawn
-			for (int w = 0; w < 8; w++) {
-				// Check which of bits in the byte of the sprite are set
-				// Invert the operation by starting on the left-side of the byte, because of big-endiannes (else the sprites will be drawn in a mirror image)
-				// Cause: if ((byte >> i) & 0x1) {
-				if ((byte << w) & 0x80) {
-					display.drawPixel(x + w, y + h, white);
-				}
-			}
+      // Width of the sprite to be drawn
+      for (int w = 0; w < 8; w++) {
+        // Check which of bits in the byte of the sprite are set
+        // Invert the operation by starting on the left-side of the byte,
+        // because of big-endiannes (else the sprites will be drawn in a mirror
+        // image) Cause: if ((byte >> i) & 0x1) {
+        if ((byte << w) & 0x80) {
+          display.drawPixel(x + w, y + h, white);
+        }
+      }
+    }
 
-		}
+    display.present();
 
-		display.present();
-		
     break;
   default:
     ESP_LOGE(TAG, "No opcode implementation yet");
@@ -245,7 +293,7 @@ void init_littlefs() {
 
 void load_rom() {
 
-  std::ifstream Rom("/littlefs/IBM Logo.ch8", std::ios::binary);
+  std::ifstream Rom("/littlefs/test_opcode.ch8", std::ios::binary);
 
   if (!Rom.is_open()) {
     ESP_LOGE(TAG, "Unable to open file");
@@ -296,12 +344,12 @@ extern "C" void app_main(void) {
   display.init();
   ESP_LOGI(TAG, "Initialized display");
   display.fillScreen(white); // Test
-	display.present();
+  display.present();
 
   while (true) {
     // Below line causes issues due to calling fetch twice, thereby incrementing
     // PC twice ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
     execute();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
