@@ -20,7 +20,7 @@
 #include <bit>
 #include <bitset>
 
-// #include <KeypadControl.hpp>
+#include <KeypadControl.hpp>
 // #include <SoundControl.hpp>>
 
 static const char *TAG = "MAIN";
@@ -32,6 +32,8 @@ uint16_t stack[16];
 uint8_t sound, delay_;
 uint8_t v[16];
 uint8_t sp; // Stack pointer?
+
+uint8_t keypad[16];
 
 uint16_t opcode;
 
@@ -72,7 +74,11 @@ void init() {
     ESP_LOGI(TAG, "%X: %X", 0x50 + i, memory[0x50 + i]);
   }
 
-	sp = 0; // Initialize stack pointer to 0 (top of the stack)
+  sp = 0; // Initialize stack pointer to 0 (top of the stack)
+
+  // Below lines could be deleted?
+  display.fillScreen(black);
+  display.present();
 
   // TODO: Initialize all memory type values to zero
 };
@@ -105,7 +111,7 @@ void execute() {
   switch (opcode & 0xF000) { // & 0xF000
   case 0x0000:
     switch (opcode & 0xFFFF) {
-		// 00E0 (Clear screen)
+      // 00E0 (Clear screen)
     case 0x00E0:
       display.fillScreen(black);
       display.present();
@@ -113,12 +119,13 @@ void execute() {
       break;
     case 0x00EE:
 
-			// uint16_t stack_value = stack[sp];
+      // uint16_t stack_value = stack[sp];
 
-			// Sets PC to current value pointed to by stack pointer after 2NNN subroutine has finished
-			pc = stack[sp];
-			sp--;
-			
+      // Sets PC to current value pointed to by stack pointer after 2NNN
+      // subroutine has finished
+      sp--;
+      pc = stack[sp];
+
       ESP_LOGE(TAG, "00EE");
       break;
       // Test for testing
@@ -134,43 +141,54 @@ void execute() {
     pc = opcode & 0x0FFF;
     ESP_LOGI(TAG, "Current PC: %X", pc);
     break;
-	// 2NNN (call subroutine at NNN)
-	case 0x2000:
+  // 2NNN (call subroutine at NNN)
+  case 0x2000:
 
-		stack[sp] = pc;
-		sp++;
-		pc = opcode & 0x0FFF;
+    stack[sp] = pc;
+    sp++;
+    pc = opcode & 0x0FFF;
 
     ESP_LOGE(TAG, "2NNN");
-		break;
+    break;
 
+  // 3XNN
+  case 0x3000:
 
-	// 3XNN
-	case 0x3000:
-
-		// if (Vx == NN)
-		if (v[(opcode & 0x0F00) >> 8] == (opcode & 0x0FF)) {
-			pc += 2;
-		}
+    // if (Vx == NN)
+    if (v[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF)) {
+      ESP_LOGI(TAG, "PC: %d", pc);
+      pc += 2;
+      ESP_LOGI(TAG, "Expression true, incremented PC");
+      ESP_LOGI(TAG, "PC: %d", pc);
+    } else {
+      ESP_LOGI(TAG, "Expression false, nothing happened");
+    }
 
     ESP_LOGE(TAG, "3NNN: %d", (opcode & 0x0F00) >> 8);
     ESP_LOGE(TAG, "3NNN: %X", (opcode & 0x0F00) >> 8);
     ESP_LOGE(TAG, "3NNN");
 
-		break;
+    break;
 
-	
-	// 4XNN
-	// Yet to be tested
-	case 0x4000:
+  // 4XNN
+  // Yet to be tested
+  case 0x4000:
 
-		if (v[(opcode & 0x0F00) >> 8] != (opcode & 0x0FF)) {
-			pc += 2;
-		}
+    if (v[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF)) {
+      pc += 2;
+    }
 
     ESP_LOGE(TAG, "4NNN");
-		break;
+    break;
+  // 5XY0
+  case 0x5000:
 
+    if (v[(opcode & 0x0F00) >> 8] == v[(opcode & 0x0F0) >> 4]) {
+      pc += 2;
+    }
+
+    ESP_LOGE(TAG, "5NNN");
+    break;
   // Set register (6XNN)
   case 0x6000:
 
@@ -184,6 +202,7 @@ void execute() {
 
     ESP_LOGE(TAG, "6XNN");
     break;
+    // 7XNN
   case 0x7000:
 
     ESP_LOGI(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
@@ -195,11 +214,130 @@ void execute() {
 
     ESP_LOGE(TAG, "7XNN");
     break;
+
+  // 8XYN;
+  case 0x8000:
+    switch (opcode & 0x000F) {
+    // 8XY0
+    case 0x0000:
+      ESP_LOGE(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
+      ESP_LOGE(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
+      v[(opcode & 0x0F00) >> 8] = v[(opcode & 0x00F0) >> 4];
+      ESP_LOGE(TAG, "8XY0");
+      break;
+    // 8XY1
+    case 0x0001:
+      v[(opcode & 0x0F00) >> 8] |= v[(opcode & 0x00F0) >> 4];
+      ESP_LOGE(TAG, "8XY0");
+      break;
+    // 8XY2
+    case 0x0002:
+      v[(opcode & 0x0F00) >> 8] &= v[(opcode & 0x00F0) >> 4];
+      ESP_LOGE(TAG, "8XY0");
+      break;
+    // 8XY3
+    case 0x0003:
+      v[(opcode & 0x0F00) >> 8] ^= v[(opcode & 0x00F0) >> 4];
+      ESP_LOGE(TAG, "8XY0");
+      break;
+    // 8XY4
+    case 0x0004:
+      uint16_t val;
+      val = v[(opcode & 0x0F00) >> 8] + v[(opcode & 0x00F0) >> 4];
+
+      v[(opcode & 0x0F00) >> 8] = 0xFF & val;
+
+      if (val > 255) {
+        v[0xf] = 1;
+        ESP_LOGE(TAG, "Test: %d", 0xf);
+      } else {
+        v[0x0f] = 0;
+      }
+
+      break;
+    case 0x0005:
+
+      if (v[(opcode & 0x0F00) >> 8] > v[(opcode & 0x00F0) >> 4]) {
+        v[0x0f] = 1;
+      } else {
+        v[0x0f] = 0;
+      }
+
+      v[(opcode & 0x0F00) >> 8] -= v[(opcode & 0x00F0) >> 4];
+
+      break;
+
+    case 0x0006:
+      // Check whether the LSB of current register Vx is 1 or 0
+      v[0x0f] = v[(opcode & 0x0F00) >> 8] & 0x1;
+
+      v[(opcode & 0x0F00) >> 8] >>= 1;
+      ESP_LOGE(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGE(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
+      break;
+
+    // UNTESTED
+    case 0x0007:
+
+      ESP_LOGE(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGE(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
+
+      if (v[(opcode & 0x0F00) >> 8] < v[(opcode & 0x00F0) >> 4]) {
+        v[0xf] = 1;
+      } else {
+        v[0xf] = 0;
+      }
+
+      v[(opcode & 0x0F00) >> 8] =
+          v[(opcode & 0x00F0) >> 4] - v[(opcode & 0x0F00) >> 8];
+
+      break;
+
+    case 0x000E:
+
+      v[0x0f] = v[(opcode & 0x0F00) >> 8] & 0x80;
+
+      v[(opcode & 0x0F00) >> 8] <<= 1;
+
+      break;
+    }
+    break;
+
+  // 9XY0
+  case 0x9000:
+
+    if (v[(opcode & 0x0F00) >> 8] != v[(opcode & 0x0F0) >> 4]) {
+      ESP_LOGI(TAG, "PC: %d", pc);
+      pc += 2;
+      ESP_LOGI(TAG, "Expression true, incremented PC");
+      ESP_LOGI(TAG, "PC: %d", pc);
+    } else {
+      ESP_LOGI(TAG, "Expression false, nothing happened");
+    }
+
+    ESP_LOGE(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
+    ESP_LOGE(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
+
+    ESP_LOGE(TAG, "5NNN");
+
+    break;
+    // ANNN
   case 0xA000:
     ESP_LOGE(TAG, "ANNN");
     I = opcode & 0x0FFF;
     ESP_LOGI(TAG, "NNN: %X", opcode & 0x0FFF);
     ESP_LOGI(TAG, "Register I: %X", I);
+    break;
+  // BNNN
+  case 0xB000:
+
+    pc = (opcode & 0x0FFF) + v[0];
+
+    break;
+  // CXNN
+  case 0xC000:
+    ESP_LOGE(TAG, "Random number: %d", rand() % 256);
+    v[(opcode & 0x0F00) >> 8] = (rand() % 256) & (opcode & 0x00FF);
     break;
     // Most involved instruction for drawing a sprite on the screen
   case 0xD000:
@@ -247,6 +385,50 @@ void execute() {
     display.present();
 
     break;
+  case 0xE000:
+    switch (opcode & 0x00FF) {
+    // EX9E
+    case 0x009E:
+      if (keypad[v[(opcode & 0x0F00) >> 8]]) {
+        pc += 2;
+      }
+			ESP_LOGE(TAG, "");
+      break;
+    // EXA1
+    case 0x00A1:
+			ESP_LOGE(TAG, "Register Vx: %X", v[(opcode & 0x0F00) >> 8]);
+			ESP_LOGE(TAG, "Register Vx: %X", keypad[v[(opcode & 0x0F00) >> 8]]);
+      if (keypad[v[(opcode & 0x0F00) >> 8]] == 0) {
+        pc += 2;
+      }
+			ESP_LOGE(TAG, "EX0A");
+      break;
+    }
+    break;
+  case 0xF000:
+		switch (opcode & 0x00FF) {
+			// TODO: implement opcode
+			case 0x0007:
+				break;
+			case 0x000A:
+
+				bool key_pressed;
+				key_pressed = false;
+
+				for (int i = 0; i < 16; i++) {
+					if (keypad[i]) {
+						v[(opcode & 0x0F00) >> 8] = i;
+						key_pressed = true;
+					}
+				}
+
+				if (key_pressed != true) {
+					pc -= 2;
+				}
+
+				break;
+		}
+    break;
   default:
     ESP_LOGE(TAG, "No opcode implementation yet");
   }
@@ -293,7 +475,7 @@ void init_littlefs() {
 
 void load_rom() {
 
-  std::ifstream Rom("/littlefs/test_opcode.ch8", std::ios::binary);
+  std::ifstream Rom("/littlefs/Tetris.ch8", std::ios::binary);
 
   if (!Rom.is_open()) {
     ESP_LOGE(TAG, "Unable to open file");
@@ -341,15 +523,52 @@ extern "C" void app_main(void) {
   init_littlefs();
   load_rom();
 
+  // GPIO 35, 3.3V
+  KeypadControl controller(ADC1_CHANNEL_7, GPIO_NUM_35, 50);
+
+  controller.assignButtonCallback([&](Button button) {
+    switch (button) {
+    case Button::NONE:
+      for (int i = 0; i < 16; i++) {
+        // ESP_LOGI(TAG, "Key: %d", keypad[i]);
+        keypad[i] = 0;
+      }
+
+      ESP_LOGI(TAG, "Button: NONE");
+      break;
+    case Button::START:
+			keypad[0xf] = 1;
+      ESP_LOGI(TAG, "Button: START");
+      break;
+    case Button::LEFT:
+      keypad[4] = 1;
+      ESP_LOGI(TAG, "Button: LEFT");
+      break;
+    case Button::RIGHT:
+      keypad[6] = 1;
+      ESP_LOGI(TAG, "Button: RIGHT");
+      break;
+    case Button::UP:
+      keypad[5] = 1;
+      ESP_LOGI(TAG, "Button: UP");
+      break;
+    case Button::DOWN:
+			keypad[0xe] = 1;
+      ESP_LOGI(TAG, "Button: DOWN");
+      break;
+    }
+  });
+
   display.init();
   ESP_LOGI(TAG, "Initialized display");
-  display.fillScreen(white); // Test
+  display.fillScreen(black); // Test
   display.present();
 
   while (true) {
     // Below line causes issues due to calling fetch twice, thereby incrementing
     // PC twice ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
     execute();
+    controller.start();
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
