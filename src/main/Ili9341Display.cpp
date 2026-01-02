@@ -213,8 +213,9 @@ void Ili9341Display::drawPixel(int x, int y, uint16_t color) {
     if (backbuffer_) {
 
 				// Center and scale pixels
-				uint8_t transformed_x = 32 + (x * 4);
-				uint8_t transformed_y = 56 + (y * 4);
+				// FIX: uint8_t doesn't allow for adequate data (max. 256)
+				uint16_t transformed_x = 32 + (x * 4);
+				uint16_t transformed_y = 56 +  (y * 4);
 
 				// Draw a 4x4 rectangle into the backbuffer
 				backbuffer_[transformed_y * WIDTH + transformed_x] = color;
