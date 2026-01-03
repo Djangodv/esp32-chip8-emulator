@@ -30,8 +30,8 @@ uint16_t pc;
 uint16_t I;
 uint16_t stack[16];
 uint8_t sound, delay_;
-uint8_t v[16];
 uint8_t sp; // Stack pointer?
+uint8_t v[16];
 
 uint8_t keypad[16];
 
@@ -89,6 +89,9 @@ void init() {
   // Source: https://randomnerdtutorials.com/esp-idf-esp32-blink-led/
   gpio_reset_pin(LED_GPIO);
   gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+
+	// Load keypad test 3 automatically (temporary)
+	memory[0x1FF] = 3;
 
   // TODO: Initialize all memory type values to zero
 };
@@ -282,27 +285,35 @@ void execute() {
         v[0xf] = 1;
         ESP_LOGE(TAG, "Test: %d", 0xf);
       } else {
-        v[0x0f] = 0;
+        v[0xf] = 0;
       }
 
       break;
+      // 8XY5
     case 0x0005:
 
-      if (v[(opcode & 0x0F00) >> 8] > v[(opcode & 0x00F0) >> 4]) {
-        v[0x0f] = 1;
-      } else {
-        v[0x0f] = 0;
-      }
+			// Save value in vX before carrying out operation to check carry flag (vF)
+			uint8_t vX;
+			vX= v[(opcode & 0x0F00) >> 8];
 
       v[(opcode & 0x0F00) >> 8] -= v[(opcode & 0x00F0) >> 4];
+
+      if (vX >= v[(opcode & 0x00F0) >> 4]) {
+        v[0xf] = 1;
+      } else {
+        v[0xf] = 0;
+      }
 
       break;
 
     case 0x0006:
-      // Check whether the LSB of current register Vx is 1 or 0
-      v[0x0f] = v[(opcode & 0x0F00) >> 8] & 0x1;
+
+			vX = v[(opcode & 0x0F00) >> 8];
 
       v[(opcode & 0x0F00) >> 8] >>= 1;
+
+      // Check whether the LSB of current register Vx is 1 or 0
+      v[0x0f] = vX & 0x1;
       ESP_LOGE(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
       ESP_LOGE(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
       break;
@@ -313,22 +324,31 @@ void execute() {
       ESP_LOGE(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
       ESP_LOGE(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
 
-      if (v[(opcode & 0x0F00) >> 8] < v[(opcode & 0x00F0) >> 4]) {
+			vX= v[(opcode & 0x0F00) >> 8];
+
+      v[(opcode & 0x0F00) >> 8] = v[(opcode & 0x00F0) >> 4] - v[(opcode & 0x0F00) >> 8];
+
+      if (vX <= v[(opcode & 0x00F0) >> 4]) {
         v[0xf] = 1;
       } else {
         v[0xf] = 0;
       }
 
-      v[(opcode & 0x0F00) >> 8] =
-          v[(opcode & 0x00F0) >> 4] - v[(opcode & 0x0F00) >> 8];
-
       break;
 
+		// 8XYE
     case 0x000E:
 
-      v[0x0f] = v[(opcode & 0x0F00) >> 8] & 0x80;
+			vX = v[(opcode & 0x0F00) >> 8];
 
       v[(opcode & 0x0F00) >> 8] <<= 1;
+
+			if (vX & 0x80) {
+				v[0xf] = 1;
+			} else {
+				v[0xf] = 0;
+			}
+      // v[0xf] = vX & 0x80;
 
       break;
     }
@@ -408,7 +428,12 @@ void execute() {
         // because of big-endiannes (else the sprites will be drawn in a mirror
         // image) Cause: if ((byte >> i) & 0x1) {
         if ((byte << w) & 0x80) {
-          display.drawPixel(x + w, y + h, white);
+          // display.drawPixel(x + w, y + h, white);
+          if (display.drawPixel(x + w, y + h, white)) {
+            v[0xf] = 1;
+          } else {
+            v[0xf] = 0;
+          }
         }
       }
     }
@@ -443,8 +468,11 @@ void execute() {
 
       TickType_t expiryTime;
 
-      expiryTime = pdTICKS_TO_MS(xTimerGetExpiryTime(xTimer) - xTaskGetTickCount()) / interval;
-      ESP_LOGI(TAG, "Timer expiry time: %d ticks", static_cast<uint8_t>(expiryTime));
+      expiryTime =
+          pdTICKS_TO_MS(xTimerGetExpiryTime(xTimer) - xTaskGetTickCount()) /
+          interval;
+      ESP_LOGI(TAG, "Timer expiry time: %d ticks",
+               static_cast<uint8_t>(expiryTime));
 
       v[(opcode & 0x0F00) >> 8] = static_cast<uint8_t>(expiryTime);
 
@@ -455,7 +483,7 @@ void execute() {
       key_pressed = false;
 
       for (int i = 0; i < 16; i++) {
-        if (keypad[i]) {
+        if (keypad[i] != 0) {
           v[(opcode & 0x0F00) >> 8] = i;
           key_pressed = true;
         }
@@ -468,7 +496,8 @@ void execute() {
       break;
     case 0x0015:
 
-      v[(opcode & 0x0F00) >> 8] = 255;
+			// TEST:
+      // v[(opcode & 0x0F00) >> 8] = 255;
 
       uint8_t duration;
       duration = v[(opcode & 0x0F00) >> 8];
@@ -538,6 +567,44 @@ void execute() {
       // vTaskDelay(pdMS_TO_TICKS(100)); // Delay 0.1 second
 
       break;
+    case 0x001E:
+      I += v[(opcode & 0x0F00) >> 8];
+      break;
+    case 0x0029:
+
+      uint8_t offset;
+      offset = 0x50 + (v[(opcode & 0x0F00) >> 8] * 5);
+
+      I = offset;
+
+      break;
+    case 0x0033:
+
+      uint8_t number;
+      number = v[(opcode & 0x0F00) >> 8];
+
+      // 156
+      // 9C
+      // 00011100
+
+      for (int i = 0; i < 3; i++) {
+        memory[I + (2 - i)] = number % 10;
+        number /= 10;
+      }
+
+      break;
+    case 0x0055:
+
+      for (int i = 0; i <= ((opcode & 0x0F00) >> 8); i++) {
+        memory[I + i] = v[i];
+      }
+
+      break;
+    case 0x0065:
+      for (int i = 0; i <= ((opcode & 0x0F00) >> 8); i++) {
+        v[i] = memory[I + i];
+      }
+      break;
     }
     break;
   default:
@@ -586,7 +653,7 @@ void init_littlefs() {
 
 void load_rom() {
 
-  std::ifstream Rom("/littlefs/Beep.ch8", std::ios::binary);
+  std::ifstream Rom("/littlefs/Tetris.ch8", std::ios::binary);
 
   if (!Rom.is_open()) {
     ESP_LOGE(TAG, "Unable to open file");
@@ -662,7 +729,7 @@ extern "C" void app_main(void) {
       ESP_LOGI(TAG, "Button: NONE");
       break;
     case Button::START:
-      keypad[0xb] = 1;
+      keypad[0xa] = 1;
       ESP_LOGI(TAG, "Button: START");
       break;
     case Button::LEFT:
@@ -674,11 +741,11 @@ extern "C" void app_main(void) {
       ESP_LOGI(TAG, "Button: RIGHT");
       break;
     case Button::UP:
-      keypad[5] = 1;
+      keypad[0xe] = 1;
       ESP_LOGI(TAG, "Button: UP");
       break;
     case Button::DOWN:
-      keypad[0xe] = 1;
+      keypad[0xf] = 1;
       ESP_LOGI(TAG, "Button: DOWN");
       break;
     }
@@ -691,12 +758,18 @@ extern "C" void app_main(void) {
 
   TickType_t period;
 
+  controller.start();
+
   while (true) {
     // Below line causes issues due to calling fetch twice, thereby incrementing
     // PC twice ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
     execute();
-    controller.start();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // Normally chip-8 interpreter runs at 700 IPS (instructions per second),
+    // which means: 1000/700
+    // vTaskDelay(2 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(2));
+		// ESP_LOGW(TAG, "Timing: %d", static_cast<int>(portTICK_PERIOD_MS));
+		// Output: 10
 
     // period = xTimerGetPeriod(xTimer);
     // ESP_LOGI(TAG, "Timer expiry time: %d ticks", static_cast<int>(period));

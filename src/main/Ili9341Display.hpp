@@ -36,7 +36,7 @@ public:
     uint16_t rbg565(uint8_t r, uint8_t b, uint8_t g);
 
     // Drawing Primitives
-    void drawPixel(int x, int y, uint16_t color);
+    bool drawPixel(int x, int y, uint16_t color);
     void drawLine(int x0, int y0, int x1, int y1, uint16_t color);
     void drawRectangle(int x, int y, int w, int h, uint16_t color, bool fill = false);
     void drawTriangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color, bool fill = false);
