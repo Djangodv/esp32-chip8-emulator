@@ -10,3 +10,6 @@ build/
 
 # Components
 **/managed_components/*
+
+# Roms
+*/roms/
