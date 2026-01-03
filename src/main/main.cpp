@@ -37,6 +37,12 @@ uint8_t keypad[16];
 
 uint16_t opcode;
 
+TimerHandle_t xTimer;
+// TODO: Change to float (4080ms)
+constexpr float interval = 4250.0 / 255.0;
+
+constexpr gpio_num_t LED_GPIO = GPIO_NUM_21;
+
 uint8_t fontset[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -80,8 +86,33 @@ void init() {
   display.fillScreen(black);
   display.present();
 
+  // Source: https://randomnerdtutorials.com/esp-idf-esp32-blink-led/
+  gpio_reset_pin(LED_GPIO);
+  gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+
   // TODO: Initialize all memory type values to zero
 };
+
+bool soundState = false;
+
+void timerCallback(TimerHandle_t xTimer) {
+
+  // Turn LED OFF
+  if (soundState == true) {
+    ESP_LOGW(TAG, "LED OFF");
+    gpio_set_level(LED_GPIO, 0);
+    // vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay 1 second
+    soundState = false;
+  }
+
+  ESP_LOGW(TAG, "Timer finished");
+
+  if (xTimerStop(xTimer, 0) != pdPASS) {
+    ESP_LOGW(TAG, "Timer stop failed!");
+  } else {
+    ESP_LOGW(TAG, "Timer stopped succesfully");
+  }
+}
 
 uint16_t fetch() {
 
@@ -392,42 +423,122 @@ void execute() {
       if (keypad[v[(opcode & 0x0F00) >> 8]]) {
         pc += 2;
       }
-			ESP_LOGE(TAG, "");
+      ESP_LOGE(TAG, "");
       break;
     // EXA1
     case 0x00A1:
-			ESP_LOGE(TAG, "Register Vx: %X", v[(opcode & 0x0F00) >> 8]);
-			ESP_LOGE(TAG, "Register Vx: %X", keypad[v[(opcode & 0x0F00) >> 8]]);
+      ESP_LOGE(TAG, "Register Vx: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGE(TAG, "Register Vx: %X", keypad[v[(opcode & 0x0F00) >> 8]]);
       if (keypad[v[(opcode & 0x0F00) >> 8]] == 0) {
         pc += 2;
       }
-			ESP_LOGE(TAG, "EX0A");
+      ESP_LOGE(TAG, "EX0A");
       break;
     }
     break;
   case 0xF000:
-		switch (opcode & 0x00FF) {
-			// TODO: implement opcode
-			case 0x0007:
-				break;
-			case 0x000A:
+    switch (opcode & 0x00FF) {
+    // TODO: implement opcode
+    case 0x0007:
 
-				bool key_pressed;
-				key_pressed = false;
+      TickType_t expiryTime;
 
-				for (int i = 0; i < 16; i++) {
-					if (keypad[i]) {
-						v[(opcode & 0x0F00) >> 8] = i;
-						key_pressed = true;
-					}
-				}
+      expiryTime = pdTICKS_TO_MS(xTimerGetExpiryTime(xTimer) - xTaskGetTickCount()) / interval;
+      ESP_LOGI(TAG, "Timer expiry time: %d ticks", static_cast<uint8_t>(expiryTime));
 
-				if (key_pressed != true) {
-					pc -= 2;
-				}
+      v[(opcode & 0x0F00) >> 8] = static_cast<uint8_t>(expiryTime);
 
-				break;
-		}
+      break;
+    case 0x000A:
+
+      bool key_pressed;
+      key_pressed = false;
+
+      for (int i = 0; i < 16; i++) {
+        if (keypad[i]) {
+          v[(opcode & 0x0F00) >> 8] = i;
+          key_pressed = true;
+        }
+      }
+
+      if (key_pressed != true) {
+        pc -= 2;
+      }
+
+      break;
+    case 0x0015:
+
+      v[(opcode & 0x0F00) >> 8] = 255;
+
+      uint8_t duration;
+      duration = v[(opcode & 0x0F00) >> 8];
+
+      ESP_LOGW(TAG, "Duration: %d", duration);
+
+      // SOURCE: https://saludpcb.com/esp32-tutorial-using-xtimer/
+      // Start timer instantly (with delay of 0)
+      if (xTimerStart(xTimer, interval) != pdPASS) {
+        ESP_LOGE(TAG, "Timer start failed!");
+      } else {
+        ESP_LOGE(TAG, "Timer start succesful!");
+      }
+
+      ESP_LOGW(TAG, "Interval * duration: %f", interval * duration);
+
+      // Below check is needed to prevent a crash when duration is 0, which
+      // doesn't give enough time to timerCallback() to finish
+      if (duration != 0) {
+        // Change period of timer using above calculation
+        if (xTimerChangePeriod(xTimer, pdMS_TO_TICKS(interval * duration), 0) !=
+            pdPASS) {
+          ESP_LOGE(TAG, "Timer change period failed!");
+        }
+      }
+
+      break;
+
+    case 0x0018:
+
+      // NOTE: Is this correct?
+      // Calculation for amount of timer ms:
+      // The timer is one byte large (max. of 255) and because the timer is
+      // decremented by 60 each seconds you get 255 / 60 = 4.25s. Converted to
+      // ms that is 4250ms if the timer gets set to the maximum value of a byte.
+      // 4250 / 255 = ~16.67, because (4250 / 255) * 255 = 4250ms. So each value
+      // of 1 inside the byte is exactly ~16.67ms long amounting to a maximum
+      // duration of 4.25 seconds.
+
+      duration = v[(opcode & 0x0F00) >> 8];
+
+      ESP_LOGW(TAG, "Duration: %d", duration);
+      ESP_LOGW(TAG, "Interval: %f", interval);
+
+      // SOURCE: https://saludpcb.com/esp32-tutorial-using-xtimer/
+      // Start timer instantly (with delay of 0)
+      if (xTimerStart(xTimer, interval) != pdPASS) {
+        ESP_LOGE(TAG, "Timer start failed!");
+      } else {
+        ESP_LOGE(TAG, "Timer start succesful!");
+      }
+
+      // Below check is needed to prevent a crash when duration is 0, which
+      // doesn't give enough time to timerCallback() to finish
+      if (duration != 0) {
+        // Change period of timer using above calculation
+        if (xTimerChangePeriod(xTimer, pdMS_TO_TICKS(interval) * duration, 0) !=
+            pdPASS) {
+          ESP_LOGE(TAG, "Timer change period failed!");
+        }
+      }
+
+      // Turn LED ON
+      ESP_LOGW(TAG, "LED ON");
+      gpio_set_level(LED_GPIO, 1);
+      soundState = true;
+      // vTaskDelay(pdMS_TO_TICKS(100)); // Delay 0.1 second
+
+      break;
+    }
     break;
   default:
     ESP_LOGE(TAG, "No opcode implementation yet");
@@ -475,7 +586,7 @@ void init_littlefs() {
 
 void load_rom() {
 
-  std::ifstream Rom("/littlefs/Tetris.ch8", std::ios::binary);
+  std::ifstream Rom("/littlefs/Beep.ch8", std::ios::binary);
 
   if (!Rom.is_open()) {
     ESP_LOGE(TAG, "Unable to open file");
@@ -516,6 +627,20 @@ extern "C" void app_main(void) {
 
   ESP_LOGI(TAG, "Started running 'main' task");
 
+  // Create a software timer
+  xTimer = xTimerCreate(
+      "Timer",                 // Timer name
+      pdMS_TO_TICKS(interval), // Timer period in ticks (milliseconds to ticks)
+      pdTRUE,                  // Auto-reload flag
+      (void *)0,               // Timer ID
+      timerCallback            // Callback function
+  );
+
+  if (xTimer == NULL) {
+    ESP_LOGE(TAG, "Timer creation failed!");
+    return;
+  }
+
   black = 0xFFFF;
   white = 0x0000;
 
@@ -537,7 +662,7 @@ extern "C" void app_main(void) {
       ESP_LOGI(TAG, "Button: NONE");
       break;
     case Button::START:
-			keypad[0xf] = 1;
+      keypad[0xb] = 1;
       ESP_LOGI(TAG, "Button: START");
       break;
     case Button::LEFT:
@@ -553,7 +678,7 @@ extern "C" void app_main(void) {
       ESP_LOGI(TAG, "Button: UP");
       break;
     case Button::DOWN:
-			keypad[0xe] = 1;
+      keypad[0xe] = 1;
       ESP_LOGI(TAG, "Button: DOWN");
       break;
     }
@@ -564,11 +689,16 @@ extern "C" void app_main(void) {
   display.fillScreen(black); // Test
   display.present();
 
+  TickType_t period;
+
   while (true) {
     // Below line causes issues due to calling fetch twice, thereby incrementing
     // PC twice ESP_LOGE(TAG, "Current instruction in memory: %X", fetch());
     execute();
     controller.start();
     vTaskDelay(pdMS_TO_TICKS(100));
+
+    // period = xTimerGetPeriod(xTimer);
+    // ESP_LOGI(TAG, "Timer expiry time: %d ticks", static_cast<int>(period));
   }
 }
