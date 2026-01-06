@@ -19,4 +19,8 @@ dependencies:
   #   public: true
   # espressif/esp_lcd_ili9341: ^1.0.0
   espressif/esp_lcd_ili9341: ==1.0.0
-  joltwallet/littlefs: "~=1.14.8"
+  joltwallet/littlefs: ~=1.14.8
+
+  # Uncomment the below lines for Arduino core functionality
+  # espressif/arduino-esp32:
+  #   version: "3.2.0"

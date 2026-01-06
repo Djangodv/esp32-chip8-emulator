@@ -6,11 +6,16 @@
 #include "freertos/task.h"
 #include <array>
 #include <cstdint>
+
 #include "Memory.hpp"
+#include "TimerControl.hpp"
+#include "SoundControl.hpp"
 
 #include <sys/types.h>
 
-class InterpreterControl {
+#include "DisplayControl.hpp"
+
+class InterpreterControl : public TimerControlInterface {
 
 public:
   InterpreterControl();
@@ -19,17 +24,40 @@ public:
   void start();
   void stop();
 
-	Memory memory;
+  Memory memory;
 
+	void timerFinished() override;
   // NOTE: Has to be a static member, otherwise the task will end up crashing
   // static uint8_t memory[4096];
 
 private:
-  TaskHandle_t _task_handle;
-  bool _running;
-
   static void taskWrapper(void *pvParameters);
   void run();
   void init();
+
+	uint16_t fetch();
+	void execute();
+
+  DisplayControl displayControl;
+	TimerControl timerControl;
+	SoundControl soundControl;
+
+  uint16_t pc;
+  uint16_t I;
+  uint16_t stack[16];
+  uint8_t sound, delay_;
+  uint8_t sp; // Stack pointer?
+  uint8_t v[16];
+
+  uint8_t keypad[16];
+
+  uint16_t opcode;
+
+  TaskHandle_t _task_handle;
+  bool _running;
+
+  // Colors
+  uint16_t black;
+  uint16_t white;
 
 };

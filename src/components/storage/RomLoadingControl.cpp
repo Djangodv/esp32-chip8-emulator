@@ -42,10 +42,6 @@ void RomLoadingControl::loadRom(const std::string &filename) {
 
   ESP_LOGI(TAG, "Loaded file: %s into memory", filename.c_str());
 
-  for (int i = 0; i < size; i++) {
-    ESP_LOGI(TAG, "Byte %d: %X", i, _interpreterControl.memory.getMemory(i));
-  }
-
   // TODO: Update to work with ESP-IDF
   // Some simple tests for determining whether the output is correct
   // uint16_t opcode;

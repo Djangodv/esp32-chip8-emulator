@@ -11,6 +11,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 
+static constexpr const char* TAG = "DisplayControl";
+
 DisplayControl::DisplayControl(int mosi, int sclk, int cs, int dc, int rst,
                                int bl)
     : _mosi(mosi), _sclk(sclk), _cs(cs), _dc(dc), _rst(rst), _bl(bl) {}
@@ -25,6 +27,9 @@ DisplayControl::~DisplayControl() {
 }
 
 void DisplayControl::init() {
+
+  ESP_LOGI(TAG, "Succesfully initialized '%s'", TAG);
+
   setupSPI();
   setupPanel();
   // Allocate full-screen backbuffer that we can use
@@ -99,6 +104,7 @@ void DisplayControl::present() {
   if (_panel) {
     esp_err_t err =
         esp_lcd_panel_draw_bitmap(_panel, 0, 0, WIDTH, HEIGHT, backbuffer_);
+		// NOTE: Might make everything slower
     vTaskDelay(pdMS_TO_TICKS(41)); // slight delay before new draw transfer is
                                    // done. ToDo: implement a callback
     if (err != ESP_OK) {
@@ -222,8 +228,8 @@ bool DisplayControl::drawPixel(int x, int y, uint16_t color) {
     uint16_t transformed_x = 32 + (x * 4);
     uint16_t transformed_y = 56 + (y * 4);
 
-    ESP_LOGW(TAG, "%X", backbuffer_[transformed_y * WIDTH + transformed_x]);
-    ESP_LOGW(TAG, "%X", color);
+    // ESP_LOGW(TAG, "%X", backbuffer_[transformed_y * WIDTH + transformed_x]);
+    // ESP_LOGW(TAG, "%X", color);
 
     if (backbuffer_[transformed_y * WIDTH + transformed_x] == 0x0000) {
       color ^= 0xFFFF;

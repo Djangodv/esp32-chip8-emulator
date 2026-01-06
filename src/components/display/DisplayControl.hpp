@@ -45,7 +45,6 @@ public:
 		void present();
 
 private:
-    static constexpr const char* TAG = "Drawables";
 
     void setupSPI();
     void setupPanel();
