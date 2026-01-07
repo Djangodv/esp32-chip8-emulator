@@ -5,7 +5,7 @@ static const char *TAG = "TimerControl";
 TimerControl::TimerControl(TimerControlInterface *timerControlI)
     : _task_handle(nullptr), _running(false) {
 
-	_timerControlI = timerControlI;
+  _timerControlI = timerControlI;
 
   init();
 }
@@ -25,6 +25,27 @@ void TimerControl::stop() {
     _running = false;
     vTaskDelete(_task_handle);
     _task_handle = nullptr;
+  }
+}
+
+void TimerControl::startTimer(uint8_t duration) {
+
+  // SOURCE: https://saludpcb.com/esp32-tutorial-using-xtimer/
+  // Start timer almost instantly (with small delay to avoid errors)
+  if (xTimerStart(xTimer, interval) != pdPASS) {
+    ESP_LOGE(TAG, "Timer start failed!");
+  } else {
+    ESP_LOGE(TAG, "Timer start succesful!");
+  }
+
+  // Below check is needed to prevent a crash when duration is 0, which
+  // doesn't give enough time to timerCallback() to finish
+  if (duration != 0) {
+    // Change period of timer using above calculation
+    if (xTimerChangePeriod(xTimer, pdMS_TO_TICKS(interval) * duration, 0) !=
+        pdPASS) {
+      ESP_LOGE(TAG, "Timer change period failed!");
+    }
   }
 }
 
@@ -54,6 +75,8 @@ void TimerControl::init() {
     ESP_LOGE(TAG, "Timer creation failed!");
     return;
   }
+
+  ESP_LOGW(TAG, "Succesfully created timer!");
 }
 
 void TimerControl::run() {
@@ -63,14 +86,24 @@ void TimerControl::run() {
   while (_running) {
     vTaskDelay(pdMS_TO_TICKS(300)); // wait 300 ms
   }
-
 }
+
+// TODO: Change to float (4080ms)
+// constexpr float interval = 4250.0 / 255.0;
+// bool soundState = false;
 
 void TimerControl::timerCallback(TimerHandle_t xTimer) {
 
-	if (_timerControlI) {
-		_timerControlI->timerFinished();
-	}
+  if (_timerControlI) {
+    _timerControlI->timerFinished();
+  }
+
+  // // Turn LED OFF
+  // if (soundState == true) {
+  //   ESP_LOGW(TAG, "LED OFF");
+  //   // vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay 1 second
+  //   soundState = false;
+  // }
 
   ESP_LOGW(TAG, "Timer finished");
 
@@ -81,4 +114,4 @@ void TimerControl::timerCallback(TimerHandle_t xTimer) {
   }
 }
 
-TimerControlInterface* TimerControl::_timerControlI = nullptr;
+TimerControlInterface *TimerControl::_timerControlI = nullptr;

@@ -14,7 +14,7 @@ extern "C" void app_main(void) {
 
   ESP_LOGI(TAG, "Started running main task");
 
-	InterpreterControl interpreterControl;
+	InterpreterControl interpreterControl(GPIO_NUM_21);
 	interpreterControl.start();
 
 	RomLoadingControl romLoadingControl(interpreterControl);

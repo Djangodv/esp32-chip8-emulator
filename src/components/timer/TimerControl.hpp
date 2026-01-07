@@ -22,12 +22,11 @@ public:
   void start();
   void stop();
 
-  void startTimer(int ms);
+  void startTimer(uint8_t duration);
 
 private:
 
   TimerHandle_t xTimer;
-  // TODO: Change to float (4080ms)
 	static constexpr float interval = 4250.0 / 255.0;
 
   TaskHandle_t _task_handle;

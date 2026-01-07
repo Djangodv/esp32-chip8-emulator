@@ -8,17 +8,18 @@
 #include <cstdint>
 
 #include "Memory.hpp"
-#include "TimerControl.hpp"
 #include "SoundControl.hpp"
+#include "TimerControl.hpp"
 
 #include <sys/types.h>
 
 #include "GraphicsControl.hpp"
 
-class InterpreterControl : public TimerControlInterface, public GraphicsControlInterface {
+class InterpreterControl : public TimerControlInterface,
+                           public GraphicsControlInterface {
 
 public:
-  InterpreterControl();
+  InterpreterControl(const gpio_num_t sound_pin);
   ~InterpreterControl();
 
   void start();
@@ -26,8 +27,8 @@ public:
 
   Memory memory;
 
-	void timerFinished() override;
-	void setCollision(bool state) override;
+  void timerFinished() override;
+  void setCollision(bool state) override;
   // NOTE: Has to be a static member, otherwise the task will end up crashing
   // static uint8_t memory[4096];
 
@@ -36,12 +37,12 @@ private:
   void run();
   void init();
 
-	uint16_t fetch();
-	void execute();
+  uint16_t fetch();
+  void execute();
 
   GraphicsControl graphicsControl;
-	TimerControl timerControl;
-	SoundControl soundControl;
+  TimerControl timerControl;
+  SoundControl soundControl;
 
   uint16_t pc;
   uint16_t I;
@@ -56,9 +57,9 @@ private:
 
   TaskHandle_t _task_handle;
   bool _running;
+  const gpio_num_t _sound_pin;
 
   // Colors
   uint16_t black;
   uint16_t white;
-
 };

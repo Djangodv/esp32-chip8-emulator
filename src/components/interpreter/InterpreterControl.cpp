@@ -2,9 +2,10 @@
 
 static const char *TAG = "InterpreterControl";
 
-InterpreterControl::InterpreterControl()
+InterpreterControl::InterpreterControl(const gpio_num_t sound_pin)
     : graphicsControl(this, 13, 14, 15, 2, -1, 27), timerControl(this),
-      soundControl(GPIO_NUM_21), _task_handle(nullptr), _running(false) {
+      soundControl(sound_pin), _task_handle(nullptr), _running(false),
+      _sound_pin(sound_pin) {
   init();
 };
 
@@ -35,12 +36,16 @@ void InterpreterControl::run() {
 
   ESP_LOGI(TAG, "Started running '%s' task", TAG);
 
+  timerControl.startTimer(255);
+  // soundControl.playSound();
+
   while (_running) {
 
     // vTaskDelay(pdMS_TO_TICKS(2));
     vTaskDelay(pdMS_TO_TICKS(1000));
+    ESP_LOGE(TAG, "Level: %d", gpio_get_level(_sound_pin));
 
-    execute();
+    // execute();
   }
 }
 
@@ -72,9 +77,9 @@ void InterpreterControl::init() {
 
   // Load sprite data into memory
   for (int i = 0; i < sizeof(fontset); i++) {
-    ESP_LOGW(TAG, "%X", fontset[i]);
+    ESP_LOGD(TAG, "%X", fontset[i]);
     memory.setMemory(0x50 + i, fontset[i]);
-    ESP_LOGW(TAG, "%X: %X", 0x50 + i, memory.getMemory(0x50 + i));
+    ESP_LOGD(TAG, "%X: %X", 0x50 + i, memory.getMemory(0x50 + i));
   }
 
   sp = 0; // Initialize stack pointer to 0 (top of the stack)
@@ -176,7 +181,7 @@ void InterpreterControl::execute() {
     v[reg] = opcode & 0x00FF;
     ESP_LOGW(TAG, "Register %X: %X", reg, v[reg]);
     break;
-	// 7XNN ()
+    // 7XNN ()
   case 0x7000:
     ESP_LOGW(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
     v[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
@@ -184,13 +189,13 @@ void InterpreterControl::execute() {
     ESP_LOGW(TAG, "NN: %d", opcode & 0x00FF);
     ESP_LOGW(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
     break;
-	// ANNN ()
+    // ANNN ()
   case 0xA000:
     I = opcode & 0x0FFF;
     ESP_LOGW(TAG, "NNN: %X", opcode & 0x0FFF);
     ESP_LOGW(TAG, "Register I: %X", I);
     break;
-	// DXYN (Draw to screen)
+    // DXYN (Draw to screen)
   case 0xD000:
     uint8_t height;
     height = opcode & 0x000F;
@@ -226,7 +231,7 @@ void InterpreterControl::execute() {
         // because of big-endiannes (else the sprites will be drawn in a mirror
         // image) Cause: if ((byte >> i) & 0x1) {
         if ((byte << w) & 0x80) {
-					graphicsControl.drawPixel(x + w, y + h, white);
+          graphicsControl.drawPixel(x + w, y + h, white);
         }
       }
     }
@@ -237,17 +242,24 @@ void InterpreterControl::execute() {
   }
 };
 
-void InterpreterControl::timerFinished() { ESP_LOGW(TAG, "TESTSTST"); };
-void InterpreterControl::setCollision(bool state) { 
+void InterpreterControl::timerFinished() {
 
-	ESP_LOGW(TAG, "Collision detected");
+  if (gpio_get_level(_sound_pin)) {
+    soundControl.stopSound();
+  }
 
-	if (state == true) {
-		v[0xf] = 1;
-	} else {
-		v[0xf] = 0;
-	}
+  ESP_LOGW(TAG, "Timer finished");
+};
 
-	ESP_LOGW(TAG, "Set collision register v[0xf] to %d", state);
+void InterpreterControl::setCollision(bool state) {
 
+  ESP_LOGW(TAG, "Collision detected");
+
+  if (state == true) {
+    v[0xf] = 1;
+  } else {
+    v[0xf] = 0;
+  }
+
+  ESP_LOGW(TAG, "Set collision register v[0xf] to %d", state);
 };
