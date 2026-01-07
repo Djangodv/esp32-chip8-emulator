@@ -21,7 +21,7 @@ class InterpreterControl : public TimerControlInterface,
                            public GraphicsControlInterface, public KeypadListener {
 
 public:
-  InterpreterControl(const gpio_num_t sound_pin);
+  InterpreterControl(const std::string rom, const gpio_num_t sound_pin);
   ~InterpreterControl();
 
   void start();
@@ -49,6 +49,8 @@ private:
   SoundControl soundControl;
 	KeypadControl keypadControl;
 
+	const std::string _rom;
+
   uint16_t pc;
   uint16_t I;
   uint16_t stack[16];
@@ -67,4 +69,5 @@ private:
   // Colors
   uint16_t black;
   uint16_t white;
+
 };

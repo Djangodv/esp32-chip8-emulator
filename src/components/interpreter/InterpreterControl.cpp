@@ -2,10 +2,10 @@
 
 static const char *TAG = "InterpreterControl";
 
-InterpreterControl::InterpreterControl(const gpio_num_t sound_pin)
-    : romLoadingControl(), graphicsControl(this, 13, 14, 15, 2, -1, 27),
-      timerControl(this), soundControl(sound_pin),
-      keypadControl(this, ADC1_CHANNEL_7, GPIO_NUM_35, 20),
+InterpreterControl::InterpreterControl(const std::string rom, const gpio_num_t sound_pin)
+    : romLoadingControl(), graphicsControl(this, 13, 14, 15, 2, -1, 27), timerControl(this),
+      soundControl(sound_pin), keypadControl(this, ADC1_CHANNEL_7, GPIO_NUM_35, 20),
+      _rom(rom),
       _task_handle(nullptr), _running(false), _sound_pin(sound_pin) {
   init();
 };
@@ -82,7 +82,7 @@ void InterpreterControl::init() {
 
   sp = 0; // Initialize stack pointer to 0 (top of the stack)
 
-  romLoadingControl.loadRom("/littlefs/Tetris.ch8");
+  romLoadingControl.loadRom(_rom);
 
   graphicsControl.init();
 
