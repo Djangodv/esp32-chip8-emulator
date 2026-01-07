@@ -11,11 +11,13 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 
-static constexpr const char* TAG = "GraphicsControl";
+static constexpr const char *TAG = "GraphicsControl";
 
-GraphicsControl::GraphicsControl(int mosi, int sclk, int cs, int dc, int rst,
-                               int bl)
-    : _mosi(mosi), _sclk(sclk), _cs(cs), _dc(dc), _rst(rst), _bl(bl) {}
+GraphicsControl::GraphicsControl(GraphicsControlInterface *graphicsControlI,
+                                 int mosi, int sclk, int cs, int dc, int rst,
+                                 int bl)
+    : _mosi(mosi), _sclk(sclk), _cs(cs), _dc(dc), _rst(rst), _bl(bl),
+      _graphicsControlI(graphicsControlI) {}
 
 GraphicsControl::~GraphicsControl() {
   if (backbuffer_) {
@@ -104,7 +106,7 @@ void GraphicsControl::present() {
   if (_panel) {
     esp_err_t err =
         esp_lcd_panel_draw_bitmap(_panel, 0, 0, WIDTH, HEIGHT, backbuffer_);
-		// NOTE: Might make everything slower
+    // NOTE: Might make everything slower
     vTaskDelay(pdMS_TO_TICKS(41)); // slight delay before new draw transfer is
                                    // done. ToDo: implement a callback
     if (err != ESP_OK) {
@@ -213,13 +215,11 @@ void GraphicsControl::diagnostics() {
  */
 
 // TODO: Implement XOR operation for detecting collision
-bool GraphicsControl::drawPixel(int x, int y, uint16_t color) {
-
-  bool collisionDetected = false;
+void GraphicsControl::drawPixel(int x, int y, uint16_t color) {
 
   if ((unsigned)x >= (unsigned)WIDTH || (unsigned)y >= (unsigned)HEIGHT) {
     // ESP_LOGE(TAG, "DrawPixel out of bounds");
-    return collisionDetected; // Discard when out of bounds
+    return; // Discard when out of bounds
   }
   if (backbuffer_) {
 
@@ -233,7 +233,9 @@ bool GraphicsControl::drawPixel(int x, int y, uint16_t color) {
 
     if (backbuffer_[transformed_y * WIDTH + transformed_x] == 0x0000) {
       color ^= 0xFFFF;
-      collisionDetected = true;
+			_graphicsControlI->setCollision(true);
+    } else {
+    	_graphicsControlI->setCollision(false);
     }
 
     // 000 000
@@ -252,8 +254,4 @@ bool GraphicsControl::drawPixel(int x, int y, uint16_t color) {
   } else {
     ESP_LOGE(TAG, "No backbuffer. Can not perform draw.");
   }
-
-	return collisionDetected;
-
 }
-

@@ -15,7 +15,7 @@
 
 #include "GraphicsControl.hpp"
 
-class InterpreterControl : public TimerControlInterface {
+class InterpreterControl : public TimerControlInterface, public GraphicsControlInterface {
 
 public:
   InterpreterControl();
@@ -27,6 +27,7 @@ public:
   Memory memory;
 
 	void timerFinished() override;
+	void setCollision(bool state) override;
   // NOTE: Has to be a static member, otherwise the task will end up crashing
   // static uint8_t memory[4096];
 

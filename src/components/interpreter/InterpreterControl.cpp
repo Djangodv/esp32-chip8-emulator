@@ -3,7 +3,7 @@
 static const char *TAG = "InterpreterControl";
 
 InterpreterControl::InterpreterControl()
-    : graphicsControl(13, 14, 15, 2, -1, 27), timerControl(this),
+    : graphicsControl(this, 13, 14, 15, 2, -1, 27), timerControl(this),
       soundControl(GPIO_NUM_21), _task_handle(nullptr), _running(false) {
   init();
 };
@@ -226,11 +226,7 @@ void InterpreterControl::execute() {
         // because of big-endiannes (else the sprites will be drawn in a mirror
         // image) Cause: if ((byte >> i) & 0x1) {
         if ((byte << w) & 0x80) {
-          if (graphicsControl.drawPixel(x + w, y + h, white)) {
-            v[0xf] = 1;
-          } else {
-            v[0xf] = 0;
-          }
+					graphicsControl.drawPixel(x + w, y + h, white);
         }
       }
     }
@@ -242,3 +238,16 @@ void InterpreterControl::execute() {
 };
 
 void InterpreterControl::timerFinished() { ESP_LOGW(TAG, "TESTSTST"); };
+void InterpreterControl::setCollision(bool state) { 
+
+	ESP_LOGW(TAG, "Collision detected");
+
+	if (state == true) {
+		v[0xf] = 1;
+	} else {
+		v[0xf] = 0;
+	}
+
+	ESP_LOGW(TAG, "Set collision register v[0xf] to %d", state);
+
+};
