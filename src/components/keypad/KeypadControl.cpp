@@ -14,10 +14,10 @@ static const std::vector<ButtonThreshold> button_thresholds = {
     {1001, 1450, Button::START},
 };
 
-KeypadControl::KeypadControl(adc1_channel_t channel, gpio_num_t pin,
+KeypadControl::KeypadControl(KeypadListener *keypadListener,adc1_channel_t channel, gpio_num_t pin,
                              uint32_t interval_ms)
     : adc_channel_(channel), gpio_pin_(pin), interval_ms_(interval_ms),
-      task_handle_(nullptr), running_(false) {
+      task_handle_(nullptr), running_(false),_keypadListener(keypadListener) {
 
   adc1_config_width(ADC_WIDTH_BIT_11);
   adc1_config_channel_atten(adc_channel_, ADC_ATTEN_DB_12);
@@ -45,9 +45,9 @@ void KeypadControl::stop() {
   }
 }
 
-void KeypadControl::assignButtonCallback(std::function<void(Button)> callback) {
-  _buttonCallback = callback;
-}
+// void KeypadControl::assignButtonCallback(std::function<void(Button)> callback) {
+//   _buttonCallback = callback;
+// }
 
 void KeypadControl::taskWrapper(void *pvParameters) {
   KeypadControl *reader = static_cast<KeypadControl *>(pvParameters);
@@ -65,8 +65,8 @@ void KeypadControl::run() {
       ESP_LOGI(TAG, "Button Changed: %d (ADC Raw: %d)",
                static_cast<int>(currentButton), raw);
       lastButton = currentButton;
-      if (_buttonCallback) {
-        _buttonCallback(currentButton);
+      if (_keypadListener) {
+        _keypadListener->buttonPressed(currentButton);
       }
     }
 

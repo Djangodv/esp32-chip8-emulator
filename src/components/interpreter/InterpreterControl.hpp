@@ -14,9 +14,11 @@
 #include <sys/types.h>
 
 #include "GraphicsControl.hpp"
+#include "RomLoadingControl.hpp"
+#include "KeypadControl.hpp"
 
 class InterpreterControl : public TimerControlInterface,
-                           public GraphicsControlInterface {
+                           public GraphicsControlInterface, public KeypadListener {
 
 public:
   InterpreterControl(const gpio_num_t sound_pin);
@@ -29,6 +31,7 @@ public:
 
   void timerFinished() override;
   void setCollision(bool state) override;
+	void buttonPressed(Button buttonId) override;
   // NOTE: Has to be a static member, otherwise the task will end up crashing
   // static uint8_t memory[4096];
 
@@ -40,9 +43,11 @@ private:
   uint16_t fetch();
   void execute();
 
+  RomLoadingControl romLoadingControl;
   GraphicsControl graphicsControl;
   TimerControl timerControl;
   SoundControl soundControl;
+	KeypadControl keypadControl;
 
   uint16_t pc;
   uint16_t I;

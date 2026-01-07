@@ -17,8 +17,8 @@ extern "C" void app_main(void) {
 	InterpreterControl interpreterControl(GPIO_NUM_21);
 	interpreterControl.start();
 
-	RomLoadingControl romLoadingControl(interpreterControl);
-	romLoadingControl.loadRom("/littlefs/IBM Logo.ch8");
+	// RomLoadingControl romLoadingControl(interpreterControl);
+	// romLoadingControl.loadRom("/littlefs/Corax.ch8");
 	// romLoadingControl.start();
 
   // Infinte loop that prevents task deletion, because a FreeRTOS task is

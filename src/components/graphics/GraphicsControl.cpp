@@ -107,7 +107,7 @@ void GraphicsControl::present() {
     esp_err_t err =
         esp_lcd_panel_draw_bitmap(_panel, 0, 0, WIDTH, HEIGHT, backbuffer_);
     // NOTE: Might make everything slower
-    vTaskDelay(pdMS_TO_TICKS(41)); // slight delay before new draw transfer is
+    // vTaskDelay(pdMS_TO_TICKS(41)); // slight delay before new draw transfer is
                                    // done. ToDo: implement a callback
     if (err != ESP_OK) {
       ESP_LOGE(TAG, "Failed to draw bitmap: %s", esp_err_to_name(err));

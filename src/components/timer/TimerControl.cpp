@@ -30,6 +30,13 @@ void TimerControl::stop() {
 
 void TimerControl::startTimer(uint8_t duration) {
 
+  // The timer is one byte large (max. of 255) and because the timer is
+  // decremented by 60 each seconds you get 255 / 60 = 4.25s. Converted to
+  // ms that is 4250ms if the timer gets set to the maximum value of a byte.
+  // 4250 / 255 = ~16.67, because (4250 / 255) * 255 = 4250ms. So each value
+  // of 1 inside the byte is exactly ~16.67ms long amounting to a maximum
+  // duration of 4.25 seconds.
+
   // SOURCE: https://saludpcb.com/esp32-tutorial-using-xtimer/
   // Start timer almost instantly (with small delay to avoid errors)
   if (xTimerStart(xTimer, interval) != pdPASS) {
@@ -42,11 +49,24 @@ void TimerControl::startTimer(uint8_t duration) {
   // doesn't give enough time to timerCallback() to finish
   if (duration != 0) {
     // Change period of timer using above calculation
-    if (xTimerChangePeriod(xTimer, pdMS_TO_TICKS(interval) * duration, 0) !=
+    if (xTimerChangePeriod(xTimer, pdMS_TO_TICKS(interval * duration), 0) !=
         pdPASS) {
       ESP_LOGE(TAG, "Timer change period failed!");
     }
   }
+}
+
+uint8_t TimerControl::getExpiryTime() {
+
+  TickType_t expiryTime;
+
+  expiryTime =
+      pdTICKS_TO_MS(xTimerGetExpiryTime(xTimer) - xTaskGetTickCount()) /
+      interval;
+  ESP_LOGI(TAG, "Timer expiry time: %d ticks",
+           static_cast<uint8_t>(expiryTime));
+
+  return static_cast<uint8_t>(expiryTime);
 }
 
 // A task wrapper is a design pattern used to encapsulate a task or function
@@ -84,26 +104,15 @@ void TimerControl::run() {
   ESP_LOGI(TAG, "Started running '%s' task", TAG);
 
   while (_running) {
-    vTaskDelay(pdMS_TO_TICKS(300)); // wait 300 ms
+    vTaskDelay(pdMS_TO_TICKS(200));
   }
 }
-
-// TODO: Change to float (4080ms)
-// constexpr float interval = 4250.0 / 255.0;
-// bool soundState = false;
 
 void TimerControl::timerCallback(TimerHandle_t xTimer) {
 
   if (_timerControlI) {
     _timerControlI->timerFinished();
   }
-
-  // // Turn LED OFF
-  // if (soundState == true) {
-  //   ESP_LOGW(TAG, "LED OFF");
-  //   // vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay 1 second
-  //   soundState = false;
-  // }
 
   ESP_LOGW(TAG, "Timer finished");
 

@@ -19,13 +19,13 @@ public:
 class KeypadControl {
 
 public:
-  KeypadControl(adc1_channel_t channel, gpio_num_t pin, uint32_t interval_ms);
+  KeypadControl(KeypadListener *keypadListener,adc1_channel_t channel, gpio_num_t pin, uint32_t interval_ms);
   ~KeypadControl();
 
   void start();
   void stop();
 
-  void assignButtonCallback(std::function<void(Button)> callback);
+  // void assignButtonCallback(std::function<void(Button)> callback);
 
 private:
   adc1_channel_t adc_channel_;
@@ -38,5 +38,7 @@ private:
   void run();
   Button detectButton(int raw_adc);
 
-  std::function<void(Button)> _buttonCallback;
+	KeypadListener *_keypadListener; 
+
+  // std::function<void(Button)> _buttonCallback;
 };

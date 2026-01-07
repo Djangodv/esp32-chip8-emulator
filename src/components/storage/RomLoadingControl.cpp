@@ -4,9 +4,8 @@
 
 static const char *TAG = "RomLoadingControl";
 
-RomLoadingControl::RomLoadingControl(InterpreterControl& interpreterControl)
-    : _task_handle(nullptr), _running(false),
-      _interpreterControl(interpreterControl) {
+RomLoadingControl::RomLoadingControl()
+    : _memory(), _task_handle(nullptr), _running(false) {
 
   init();
 };
@@ -28,19 +27,21 @@ void RomLoadingControl::loadRom(const std::string &filename) {
   size_t size = Rom.tellg();
   Rom.seekg(0, std::fstream::beg);
 
-  ESP_LOGD(TAG, "ROM size: %zu", size);
+  ESP_LOGE(TAG, "ROM size: %zu", size);
 
   // Allocate a temporary buffer to store the ROM contents the size of the file
   char buffer[size];
   Rom.read(buffer, size);
 
   for (int i = 0; i < size; i++) {
-    ESP_LOGV(TAG, "Byte %d: %X", i, buffer[i]);
-    // TODO: Use PC instead of 0x200
-    _interpreterControl.memory.setMemory((0x200 + i), buffer[i]);
+    _memory.setMemory((0x200 + i), buffer[i]);
+    ESP_LOGD(TAG, "Byte %d: %X", i, buffer[i]);
+    ESP_LOGD(TAG, "Byte %d: %X", i, _memory.getMemory(0x200 + i));
+		// Small delay to avoid watchdog
+		vTaskDelay(pdMS_TO_TICKS(5));
   }
 
-  ESP_LOGI(TAG, "Loaded file: %s into memory", filename.c_str());
+  ESP_LOGE(TAG, "Loaded file: %s into memory", filename.c_str());
 
   // TODO: Update to work with ESP-IDF
   // Some simple tests for determining whether the output is correct

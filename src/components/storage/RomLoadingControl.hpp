@@ -1,3 +1,5 @@
+#pragma once
+
 #include "freertos/idf_additions.h"
 #include "esp_log.h"
 #include "esp_littlefs.h"
@@ -8,13 +10,13 @@
 #include <string>
 #include <iostream>
 
-#include "InterpreterControl.hpp"
+#include "Memory.hpp"
 
 class RomLoadingControl {
 
 public:
 
-  RomLoadingControl(InterpreterControl& interpreterControl);
+  RomLoadingControl();
   ~RomLoadingControl();
 
 	void loadRom(const std::string &filename);
@@ -22,9 +24,16 @@ public:
   void start();
   void stop();
 
+	// TODO: remove
+	// void assignSetMemory(std::function<void(uint8_t address, uint8_t value)> setMemory);
+
+	Memory _memory;
+
 private:
 
 	void init();
+
+	// Memory _memory;
 
   TaskHandle_t _task_handle;
 	bool _running;
@@ -33,7 +42,5 @@ private:
 
 	static void taskWrapper(void* pvParameters);
 	void run();
-
-	InterpreterControl& _interpreterControl;
 
 };

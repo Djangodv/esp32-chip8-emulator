@@ -23,6 +23,7 @@ public:
   void stop();
 
   void startTimer(uint8_t duration);
+	uint8_t getExpiryTime();
 
 private:
 
