@@ -14,12 +14,9 @@ static void print_banner(const char *text) {
 void test_opcodes(void) {
 
   auto interpreterControl =
-      InterpreterControl("/littlefs/test_opcode-2.ch8", GPIO_NUM_0);
+      InterpreterControl("/littlefs/test_opcode.ch8", GPIO_NUM_0);
 
   ESP_LOGI(TAG, "Running tests");
-
-  // black = 0xFFFF
-  // white = 0x0000
 
   // Fill screen with white before testing opcode 00E0 (clear display)
   interpreterControl.graphicsControl.fillScreen(0x0000);
