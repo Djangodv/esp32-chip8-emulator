@@ -9,13 +9,13 @@ SoundControl::SoundControl(const gpio_num_t gpio_pin) : _gpio_pin(gpio_pin) {
 
 void SoundControl::playSound() {
 
-  ESP_LOGW(TAG, "playSound() executed succesfully");
+  ESP_LOGD(TAG, "playSound() executed succesfully");
   gpio_set_level(_gpio_pin, 1);
 };
 
 void SoundControl::stopSound() {
 
-  ESP_LOGW(TAG, "stopSound() executed succesfully");
+  ESP_LOGD(TAG, "stopSound() executed succesfully");
   gpio_set_level(_gpio_pin, 0);
 };
 

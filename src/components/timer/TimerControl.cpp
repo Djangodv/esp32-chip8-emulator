@@ -42,7 +42,7 @@ void TimerControl::startTimer(uint8_t duration) {
   if (xTimerStart(xTimer, interval) != pdPASS) {
     ESP_LOGE(TAG, "Timer start failed!");
   } else {
-    ESP_LOGE(TAG, "Timer start succesful!");
+    ESP_LOGD(TAG, "Timer start succesful!");
   }
 
   // Below check is needed to prevent a crash when duration is 0, which
@@ -63,7 +63,7 @@ uint8_t TimerControl::getExpiryTime() {
   expiryTime =
       pdTICKS_TO_MS(xTimerGetExpiryTime(xTimer) - xTaskGetTickCount()) /
       interval;
-  ESP_LOGI(TAG, "Timer expiry time: %d ticks",
+  ESP_LOGD(TAG, "Timer expiry time: %d ticks",
            static_cast<uint8_t>(expiryTime));
 
   return static_cast<uint8_t>(expiryTime);
@@ -96,7 +96,7 @@ void TimerControl::init() {
     return;
   }
 
-  ESP_LOGW(TAG, "Succesfully created timer!");
+  ESP_LOGD(TAG, "Succesfully created timer!");
 }
 
 void TimerControl::run() {
@@ -114,12 +114,12 @@ void TimerControl::timerCallback(TimerHandle_t xTimer) {
     _timerControlI->timerFinished();
   }
 
-  ESP_LOGW(TAG, "Timer finished");
+  ESP_LOGD(TAG, "Timer finished");
 
   if (xTimerStop(xTimer, 0) != pdPASS) {
-    ESP_LOGW(TAG, "Timer stop failed!");
+    ESP_LOGD(TAG, "Timer stop failed!");
   } else {
-    ESP_LOGW(TAG, "Timer stopped succesfully");
+    ESP_LOGD(TAG, "Timer stopped succesfully");
   }
 }
 

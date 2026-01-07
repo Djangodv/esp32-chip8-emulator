@@ -27,7 +27,7 @@ void RomLoadingControl::loadRom(const std::string &filename) {
   size_t size = Rom.tellg();
   Rom.seekg(0, std::fstream::beg);
 
-  ESP_LOGE(TAG, "ROM size: %zu", size);
+  ESP_LOGD(TAG, "ROM size: %zu", size);
 
   // Allocate a temporary buffer to store the ROM contents the size of the file
   char buffer[size];
@@ -41,7 +41,7 @@ void RomLoadingControl::loadRom(const std::string &filename) {
 		vTaskDelay(pdMS_TO_TICKS(5));
   }
 
-  ESP_LOGE(TAG, "Loaded file: %s into memory", filename.c_str());
+  ESP_LOGI(TAG, "Loaded file: %s into memory", filename.c_str());
 
   // TODO: Update to work with ESP-IDF
   // Some simple tests for determining whether the output is correct

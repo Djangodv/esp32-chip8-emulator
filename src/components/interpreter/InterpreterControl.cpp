@@ -5,7 +5,7 @@ static const char *TAG = "InterpreterControl";
 InterpreterControl::InterpreterControl(const gpio_num_t sound_pin)
     : romLoadingControl(), graphicsControl(this, 13, 14, 15, 2, -1, 27),
       timerControl(this), soundControl(sound_pin),
-      keypadControl(this, ADC1_CHANNEL_7, GPIO_NUM_35, 5),
+      keypadControl(this, ADC1_CHANNEL_7, GPIO_NUM_35, 20),
       _task_handle(nullptr), _running(false), _sound_pin(sound_pin) {
   init();
 };
@@ -73,16 +73,16 @@ void InterpreterControl::init() {
 
   // Load sprite data into memory
   for (int i = 0; i < sizeof(fontset); i++) {
-    ESP_LOGE(TAG, "%X", fontset[i]);
+    ESP_LOGD(TAG, "%X", fontset[i]);
     memory.setMemory(0x50 + i, fontset[i]);
-    ESP_LOGE(TAG, "%X: %X", 0x50 + i, memory.getMemory(0x50 + i));
+    ESP_LOGD(TAG, "%X: %X", 0x50 + i, memory.getMemory(0x50 + i));
   }
 
   I = 0;
 
   sp = 0; // Initialize stack pointer to 0 (top of the stack)
 
-  romLoadingControl.loadRom("/littlefs/Pong.ch8");
+  romLoadingControl.loadRom("/littlefs/Tetris.ch8");
 
   graphicsControl.init();
 
@@ -110,7 +110,7 @@ uint16_t InterpreterControl::fetch() {
       (memory.getMemory(pc) << 8) | (memory.getMemory(pc + 1)); // 0x200
 
   // TEST:
-  // ESP_LOGW(TAG, "Instruction: %X", instruction);
+  // ESP_LOGD(TAG, "Instruction: %X", instruction);
 
   pc += 2;
 
@@ -121,7 +121,7 @@ void InterpreterControl::execute() {
 
   opcode = fetch();
 
-  ESP_LOGW(TAG, "Current instruction in memory: %X", opcode);
+  ESP_LOGD(TAG, "Current instruction in memory: %X", opcode);
 
   switch (opcode & 0x0F000) {
 
@@ -141,9 +141,9 @@ void InterpreterControl::execute() {
     break;
   // 1NNN (Set PC to location NNN)
   case 0x1000:
-    ESP_LOGW(TAG, "NNN: %X", opcode & 0x0FFF);
+    ESP_LOGD(TAG, "NNN: %X", opcode & 0x0FFF);
     pc = opcode & 0x0FFF;
-    ESP_LOGW(TAG, "Current PC: %X", pc);
+    ESP_LOGD(TAG, "Current PC: %X", pc);
     break;
   // 2NNN (Call subroutine at NNN)
   case 0x2000:
@@ -154,15 +154,15 @@ void InterpreterControl::execute() {
   // 3XNN (Skips instruction if Vx == NN)
   case 0x3000:
     if (v[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF)) {
-      ESP_LOGW(TAG, "PC: %d", pc);
+      ESP_LOGD(TAG, "PC: %d", pc);
       pc += 2;
-      ESP_LOGW(TAG, "Expression true, incremented PC");
-      ESP_LOGW(TAG, "PC: %d", pc);
+      ESP_LOGD(TAG, "Expression true, incremented PC");
+      ESP_LOGD(TAG, "PC: %d", pc);
     } else {
-      ESP_LOGW(TAG, "Expression false, nothing happened");
+      ESP_LOGD(TAG, "Expression false, nothing happened");
     }
-    ESP_LOGW(TAG, "3NNN: %d", (opcode & 0x0F00) >> 8);
-    ESP_LOGW(TAG, "3NNN: %X", (opcode & 0x0F00) >> 8);
+    ESP_LOGD(TAG, "3NNN: %d", (opcode & 0x0F00) >> 8);
+    ESP_LOGD(TAG, "3NNN: %X", (opcode & 0x0F00) >> 8);
     break;
   // 4XNN ()
   case 0x4000:
@@ -180,25 +180,25 @@ void InterpreterControl::execute() {
   case 0x6000:
     uint8_t reg;
     reg = (opcode & 0x0F00) >> 8;
-    ESP_LOGW(TAG, "Vx: %X", reg);
+    ESP_LOGD(TAG, "Vx: %X", reg);
     v[reg] = opcode & 0x00FF;
-    ESP_LOGW(TAG, "Register %X: %X", reg, v[reg]);
+    ESP_LOGD(TAG, "Register %X: %X", reg, v[reg]);
     break;
     // 7XNN ()
   case 0x7000:
-    ESP_LOGW(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
+    ESP_LOGD(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
     v[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
-    ESP_LOGW(TAG, "Vx: %d", (opcode & 0x0F00) >> 8);
-    ESP_LOGW(TAG, "NN: %d", opcode & 0x00FF);
-    ESP_LOGW(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
+    ESP_LOGD(TAG, "Vx: %d", (opcode & 0x0F00) >> 8);
+    ESP_LOGD(TAG, "NN: %d", opcode & 0x00FF);
+    ESP_LOGD(TAG, "Register Vx: %d", v[(opcode & 0x0F00) >> 8]);
     break;
   // 8XYN;
   case 0x8000:
     switch (opcode & 0x000F) {
     // 8XY0
     case 0x0000:
-      ESP_LOGW(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
-      ESP_LOGW(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
+      ESP_LOGD(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
+      ESP_LOGD(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
       v[(opcode & 0x0F00) >> 8] = v[(opcode & 0x00F0) >> 4];
       break;
     // 8XY1
@@ -251,15 +251,15 @@ void InterpreterControl::execute() {
 
       // Check whether the LSB of current register Vx is 1 or 0
       v[0x0f] = vX & 0x1;
-      ESP_LOGW(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
-      ESP_LOGW(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
+      ESP_LOGD(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGD(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
       break;
 
     // 8XY7 ()
     case 0x0007:
 
-      ESP_LOGW(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
-      ESP_LOGW(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
+      ESP_LOGD(TAG, "TEST1: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGD(TAG, "TEST2: %X", v[(opcode & 0x0F00) >> 8] & 0x1);
 
       vX = v[(opcode & 0x0F00) >> 8];
 
@@ -295,23 +295,23 @@ void InterpreterControl::execute() {
   case 0x9000:
 
     if (v[(opcode & 0x0F00) >> 8] != v[(opcode & 0x0F0) >> 4]) {
-      ESP_LOGW(TAG, "PC: %d", pc);
+      ESP_LOGD(TAG, "PC: %d", pc);
       pc += 2;
-      ESP_LOGW(TAG, "Expression true, incremented PC");
-      ESP_LOGW(TAG, "PC: %d", pc);
+      ESP_LOGD(TAG, "Expression true, incremented PC");
+      ESP_LOGD(TAG, "PC: %d", pc);
     } else {
-      ESP_LOGW(TAG, "Expression false, nothing happened");
+      ESP_LOGD(TAG, "Expression false, nothing happened");
     }
 
-    ESP_LOGW(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
-    ESP_LOGW(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
+    ESP_LOGD(TAG, "Vx: %X", (opcode & 0x00F0) >> 4);
+    ESP_LOGD(TAG, "Vx: %d", (opcode & 0x00F0) >> 4);
 
     break;
     // ANNN ()
   case 0xA000:
     I = opcode & 0x0FFF;
-    ESP_LOGW(TAG, "NNN: %X", opcode & 0x0FFF);
-    ESP_LOGW(TAG, "Register I: %X", I);
+    ESP_LOGD(TAG, "NNN: %X", opcode & 0x0FFF);
+    ESP_LOGD(TAG, "Register I: %X", I);
     break;
   // BNNN ()
   case 0xB000:
@@ -319,7 +319,7 @@ void InterpreterControl::execute() {
     break;
   // CXNN ()
   case 0xC000:
-    ESP_LOGW(TAG, "Random number: %d", rand() % 256);
+    ESP_LOGD(TAG, "Random number: %d", rand() % 256);
     v[(opcode & 0x0F00) >> 8] = (rand() % 256) & (opcode & 0x00FF);
     break;
     // DXYN (Draw to screen)
@@ -327,8 +327,8 @@ void InterpreterControl::execute() {
     uint8_t height;
     height = opcode & 0x000F;
 
-    ESP_LOGW(TAG, "N (height): %X", height);
-    ESP_LOGW(TAG, "Register I (memory address of sprite): %X, decimal: %d", I,
+    ESP_LOGD(TAG, "N (height): %X", height);
+    ESP_LOGD(TAG, "Register I (memory address of sprite): %X, decimal: %d", I,
              I);
 
     uint8_t x, y;
@@ -336,8 +336,8 @@ void InterpreterControl::execute() {
     x = v[(opcode & 0x0F00) >> 8];
     y = v[(opcode & 0x00F0) >> 4];
 
-    ESP_LOGW(TAG, "Vx: %d", x);
-    ESP_LOGW(TAG, "Vy: %d", y);
+    ESP_LOGD(TAG, "Vx: %d", x);
+    ESP_LOGD(TAG, "Vy: %d", y);
 
     // TEST:
     // std::bitset<8> byte_;
@@ -348,7 +348,7 @@ void InterpreterControl::execute() {
 
       byte = memory.getMemory(I + h);
 
-      ESP_LOGW(TAG, "Data in memory at %d: %X", I + h, memory.getMemory(I + h));
+      ESP_LOGD(TAG, "Data in memory at %d: %X", I + h, memory.getMemory(I + h));
 
       // Width of the sprite to be drawn
       for (int w = 0; w < 8; w++) {
@@ -375,8 +375,8 @@ void InterpreterControl::execute() {
       break;
     // EXA1
     case 0x00A1:
-      ESP_LOGW(TAG, "Register Vx: %X", v[(opcode & 0x0F00) >> 8]);
-      ESP_LOGW(TAG, "Register Vx: %X", keypad[v[(opcode & 0x0F00) >> 8]]);
+      ESP_LOGD(TAG, "Register Vx: %X", v[(opcode & 0x0F00) >> 8]);
+      ESP_LOGD(TAG, "Register Vx: %X", keypad[v[(opcode & 0x0F00) >> 8]]);
       if (keypad[v[(opcode & 0x0F00) >> 8]] == 0) {
         pc += 2;
       }
@@ -409,13 +409,13 @@ void InterpreterControl::execute() {
     case 0x0015:
       uint8_t duration;
       duration = v[(opcode & 0x0F00) >> 8];
-      ESP_LOGW(TAG, "Duration: %d", duration);
+      ESP_LOGD(TAG, "Duration: %d", duration);
       timerControl.startTimer(duration);
       break;
       // FX18 (Sets sound timer to Vx)
     case 0x0018:
       duration = v[(opcode & 0x0F00) >> 8];
-      ESP_LOGW(TAG, "Duration: %d", duration);
+      ESP_LOGD(TAG, "Duration: %d", duration);
       timerControl.startTimer(duration);
       soundControl.playSound();
       break;
@@ -463,7 +463,7 @@ void InterpreterControl::timerFinished() {
     soundControl.stopSound();
   }
 
-  ESP_LOGW(TAG, "Timer finished");
+  ESP_LOGD(TAG, "Timer finished");
 };
 
 void InterpreterControl::setCollision(bool state) {
@@ -483,27 +483,21 @@ void InterpreterControl::buttonPressed(Button buttonId) {
     for (int i = 0; i < 16; i++) {
       keypad[i] = 0;
     }
-    ESP_LOGI(TAG, "Button: NONE");
     break;
   case Button::START:
-    keypad[0xa] = 1;
-    ESP_LOGI(TAG, "Button: START");
+    keypad[0xf] = 1;
     break;
   case Button::LEFT:
-    keypad[4] = 1;
-    ESP_LOGI(TAG, "Button: LEFT");
+    keypad[5] = 1;
     break;
   case Button::RIGHT:
     keypad[6] = 1;
-    ESP_LOGI(TAG, "Button: RIGHT");
     break;
   case Button::UP:
-    keypad[0xe] = 1;
-    ESP_LOGI(TAG, "Button: UP");
+    keypad[1] = 1;
     break;
   case Button::DOWN:
-    keypad[0xf] = 1;
-    ESP_LOGI(TAG, "Button: DOWN");
+    keypad[4] = 1;
     break;
   }
 };

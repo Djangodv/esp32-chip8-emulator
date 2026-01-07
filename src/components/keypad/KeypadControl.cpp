@@ -62,7 +62,7 @@ void KeypadControl::run() {
     Button currentButton = detectButton(raw);
 
     if (currentButton != lastButton) {
-      ESP_LOGI(TAG, "Button Changed: %d (ADC Raw: %d)",
+      ESP_LOGD(TAG, "Button Changed: %d (ADC Raw: %d)",
                static_cast<int>(currentButton), raw);
       lastButton = currentButton;
       if (_keypadListener) {
