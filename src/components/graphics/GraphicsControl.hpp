@@ -19,10 +19,10 @@
 // #include "Triangle.hpp"
 #include <vector>
 
-class DisplayControl {
+class GraphicsControl {
 public:
-    DisplayControl(int mosi, int sclk, int cs, int dc, int rst, int bl);
-    ~DisplayControl();
+    GraphicsControl(int mosi, int sclk, int cs, int dc, int rst, int bl);
+    ~GraphicsControl();
 
     // CYD in landscape: 320x240
     static constexpr int WIDTH = 320;
@@ -37,10 +37,6 @@ public:
 
     // Drawing Primitives
     bool drawPixel(int x, int y, uint16_t color);
-    void drawLine(int x0, int y0, int x1, int y1, uint16_t color);
-    void drawRectangle(int x, int y, int w, int h, uint16_t color, bool fill = false);
-    void drawTriangle(int x0, int y0, int x1, int y1, int x2, int y2, uint16_t color, bool fill = false);
-    void drawCircle(int x, int y, int radius, uint16_t color, bool fill = false);
 
 		void present();
 

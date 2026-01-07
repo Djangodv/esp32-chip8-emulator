@@ -2,7 +2,7 @@
  *
  *  The LCD class is extended with Drawing Primitives
  */
-#include "DisplayControl.hpp"
+#include "GraphicsControl.hpp"
 #include "esp_log.h"
 
 // Required for esp_lcd_panel_io_spi_config_t and related functions
@@ -11,13 +11,13 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 
-static constexpr const char* TAG = "DisplayControl";
+static constexpr const char* TAG = "GraphicsControl";
 
-DisplayControl::DisplayControl(int mosi, int sclk, int cs, int dc, int rst,
+GraphicsControl::GraphicsControl(int mosi, int sclk, int cs, int dc, int rst,
                                int bl)
     : _mosi(mosi), _sclk(sclk), _cs(cs), _dc(dc), _rst(rst), _bl(bl) {}
 
-DisplayControl::~DisplayControl() {
+GraphicsControl::~GraphicsControl() {
   if (backbuffer_) {
     heap_caps_free(backbuffer_);
     backbuffer_ = nullptr;
@@ -26,7 +26,7 @@ DisplayControl::~DisplayControl() {
   backlightOff();
 }
 
-void DisplayControl::init() {
+void GraphicsControl::init() {
 
   ESP_LOGI(TAG, "Succesfully initialized '%s'", TAG);
 
@@ -46,7 +46,7 @@ void DisplayControl::init() {
   backlightOn();
 }
 
-void DisplayControl::setupSPI() {
+void GraphicsControl::setupSPI() {
   // I have not been able to fix compiler warnings but the following works for
   // the SPI bus configuration.
   spi_bus_config_t buscfg = {.mosi_io_num = _mosi,
@@ -72,7 +72,7 @@ void DisplayControl::setupSPI() {
   ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(_host, &io_config, &_io));
 }
 
-void DisplayControl::setupPanel() {
+void GraphicsControl::setupPanel() {
   esp_lcd_panel_dev_config_t panel_config = {
       .reset_gpio_num = _rst,
       // .color_space = ESP_LCD_COLOR_SPACE_BGR,
@@ -99,7 +99,7 @@ void DisplayControl::setupPanel() {
 }
 
 // A general function for pushing the frame to the LCD panel
-void DisplayControl::present() {
+void GraphicsControl::present() {
   // Push the backbuffer to the panel
   if (_panel) {
     esp_err_t err =
@@ -120,7 +120,7 @@ void DisplayControl::present() {
 
 // The fillScreen can now use the present function. This function is reduced to
 // filling a screen with a color. Use present function to fill the screen.
-void DisplayControl::fillScreen(uint16_t color) {
+void GraphicsControl::fillScreen(uint16_t color) {
   if (backbuffer_ == nullptr) {
     ESP_LOGE(TAG, "Backbuffer not allocated");
     return;
@@ -132,7 +132,7 @@ void DisplayControl::fillScreen(uint16_t color) {
   }
 }
 
-void DisplayControl::backlightOn() {
+void GraphicsControl::backlightOn() {
   if (_bl >= 0) {
     gpio_config_t io_conf = {.pin_bit_mask = (1ULL << _bl),
                              .mode = GPIO_MODE_OUTPUT,
@@ -145,7 +145,7 @@ void DisplayControl::backlightOn() {
   }
 }
 
-void DisplayControl::backlightOff() {
+void GraphicsControl::backlightOff() {
   if (_bl >= 0) {
     gpio_set_level(static_cast<gpio_num_t>(_bl), 0);
     ESP_LOGI(TAG, "Backlight turned off");
@@ -157,11 +157,11 @@ void DisplayControl::backlightOff() {
  *  RGB565 is commonly used in LCD displays
  *  Apperently for the CYD it is RBG (confirmed for CYD3.2)
  */
-uint16_t DisplayControl::rbg565(uint8_t r, uint8_t b, uint8_t g) {
+uint16_t GraphicsControl::rbg565(uint8_t r, uint8_t b, uint8_t g) {
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-void DisplayControl::diagnostics() {
+void GraphicsControl::diagnostics() {
   uint16_t red = rbg565(255, 0, 0);   // R=255, B=0,   G=0
   uint16_t green = rbg565(0, 0, 255); // R=0,   B=0,   G=255
   uint16_t blue = rbg565(0, 255, 0);  // R=0,   B=255, G=0
@@ -213,7 +213,7 @@ void DisplayControl::diagnostics() {
  */
 
 // TODO: Implement XOR operation for detecting collision
-bool DisplayControl::drawPixel(int x, int y, uint16_t color) {
+bool GraphicsControl::drawPixel(int x, int y, uint16_t color) {
 
   bool collisionDetected = false;
 
@@ -257,39 +257,3 @@ bool DisplayControl::drawPixel(int x, int y, uint16_t color) {
 
 }
 
-void DisplayControl::drawLine(int x0, int y0, int x1, int y1, uint16_t color) {
-  // your code
-}
-
-void DisplayControl::drawRectangle(int x, int y, int w, int h, uint16_t color,
-                                   bool fill) {
-  if (fill) {
-    // your code
-  } else {
-    // your code
-  }
-}
-
-void DisplayControl::drawTriangle(int x0, int y0, int x1, int y1, int x2,
-                                  int y2, uint16_t color, bool fill) {
-  if (fill) {
-    // Basic scanline triangle fill
-    // fills a triangle by iterating row by row from the top to the bottom
-    // https://en.wikipedia.org/wiki/Scanline_rendering
-
-    // your code
-  } else {
-    // your code
-  }
-}
-
-/*! \brief draw circle with Brensham's Circle Algorithm
- *  Nice for Bart B. to chew on
- *  https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
- *
- */
-void DisplayControl::drawCircle(int x0, int y0, int r, uint16_t color,
-                                bool fill) {
-  // your code
-}
-// end of Drawing Primitives

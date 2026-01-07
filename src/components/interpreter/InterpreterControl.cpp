@@ -3,7 +3,7 @@
 static const char *TAG = "InterpreterControl";
 
 InterpreterControl::InterpreterControl()
-    : displayControl(13, 14, 15, 2, -1, 27), timerControl(this),
+    : graphicsControl(13, 14, 15, 2, -1, 27), timerControl(this),
       soundControl(GPIO_NUM_21), _task_handle(nullptr), _running(false) {
   init();
 };
@@ -79,10 +79,10 @@ void InterpreterControl::init() {
 
   sp = 0; // Initialize stack pointer to 0 (top of the stack)
 
-  displayControl.init();
+  graphicsControl.init();
 
-  displayControl.fillScreen(white);
-  displayControl.present();
+  graphicsControl.fillScreen(white);
+  graphicsControl.present();
 
   // Load keypad test 3 automatically (temporary)
   // memory[0x1FF] = 3;
@@ -121,8 +121,8 @@ void InterpreterControl::execute() {
     switch (opcode & 0xFFFF) {
       // 00E0 (Clear screen)
     case 0x00E0:
-      displayControl.fillScreen(black);
-      displayControl.present();
+      graphicsControl.fillScreen(black);
+      graphicsControl.present();
       break;
       // 00EE (Set PC to current value pointed to by stack pointer)
     case 0x00EE:
@@ -226,7 +226,7 @@ void InterpreterControl::execute() {
         // because of big-endiannes (else the sprites will be drawn in a mirror
         // image) Cause: if ((byte >> i) & 0x1) {
         if ((byte << w) & 0x80) {
-          if (displayControl.drawPixel(x + w, y + h, white)) {
+          if (graphicsControl.drawPixel(x + w, y + h, white)) {
             v[0xf] = 1;
           } else {
             v[0xf] = 0;
@@ -235,7 +235,7 @@ void InterpreterControl::execute() {
       }
     }
 
-    displayControl.present();
+    graphicsControl.present();
 
     break;
   }

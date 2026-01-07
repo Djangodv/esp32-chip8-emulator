@@ -13,7 +13,7 @@
 
 #include <sys/types.h>
 
-#include "DisplayControl.hpp"
+#include "GraphicsControl.hpp"
 
 class InterpreterControl : public TimerControlInterface {
 
@@ -38,7 +38,7 @@ private:
 	uint16_t fetch();
 	void execute();
 
-  DisplayControl displayControl;
+  GraphicsControl graphicsControl;
 	TimerControl timerControl;
 	SoundControl soundControl;
 
