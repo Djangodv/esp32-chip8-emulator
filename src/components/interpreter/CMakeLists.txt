@@ -1,3 +1,3 @@
-idf_component_register(SRCS "InterpreterControl.cpp" "Memory.cpp" "TimerControl.cpp"
+idf_component_register(SRCS "InterpreterControl.cpp" "Memory.cpp"
                   INCLUDE_DIRS "."
-                  REQUIRES storage graphics keypad sound)
+                  REQUIRES storage graphics keypad sound timer)
